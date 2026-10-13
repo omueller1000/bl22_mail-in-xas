@@ -1,10 +1,10 @@
-import { Alert, Anchor, Badge, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Stack, Table, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 
 import { useFrames, usePlateTypes } from "../api/materials";
 import { PageLoader } from "../auth/guards";
 import { plateSummary } from "../frames/summary";
-import { FRAME_STATE_LABELS } from "../materials/labels";
+import { FrameStateBadge } from "../frames/FrameStateBadge";
 
 /** The user's frames (barcodes issued to them); each opens the configuration page. */
 export function FramesPage() {
@@ -47,7 +47,7 @@ export function FramesPage() {
                     </Anchor>
                   </Table.Td>
                   <Table.Td>
-                    <Badge variant="light">{FRAME_STATE_LABELS[frame.state]}</Badge>
+                    <FrameStateBadge state={frame.state} />
                   </Table.Td>
                   <Table.Td>{plateSummary(frame, plateTypes)}</Table.Td>
                   <Table.Td>{frame.positions.length || "—"}</Table.Td>

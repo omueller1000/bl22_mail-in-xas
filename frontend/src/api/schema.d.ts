@@ -476,6 +476,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scans/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Scan
+         * @description What the action would do to each scanned frame (nothing is changed).
+         */
+        post: operations["check_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Scan
+         * @description Move every scanned frame that may make the move; report the others with the reason.
+         */
+        post: operations["apply_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/internal-storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move To Internal Storage
+         * @description Put one frame into a free container/slot (no batch scanning here, §9.2).
+         */
+        post: operations["move_to_internal_storage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release
+         * @description Put a scheduled or loaded frame back into its slot, e.g. after a control-software crash.
+         */
+        post: operations["release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/internal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Internal Storage
+         * @description Frames occupying internal-storage slots (incl. scheduled/loaded ones), by position.
+         */
+        get: operations["internal_storage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Warnings
+         * @description Frames at the facility that need the user's attention; Operators may list everyone's.
+         */
+        get: operations["list_warnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/material-requests": {
         parameters: {
             query?: never;
@@ -734,6 +854,7 @@ export interface components {
             safety: components["schemas"]["SafetyDeclaration"] | null;
             /** Locked */
             locked: boolean;
+            storage: components["schemas"]["StorageLocation"] | null;
             /** Missing */
             missing: string[];
             /** Version */
@@ -767,6 +888,15 @@ export interface components {
          * @enum {string}
          */
         FrameState: "reserved" | "issued" | "shipped_to_user" | "received" | "received_on_hold" | "external_storage" | "internal_storage" | "scheduled" | "loaded" | "returned" | "void";
+        /** FrameWarning */
+        FrameWarning: {
+            /** Barcode */
+            barcode: string;
+            owner: components["schemas"]["UserRef"] | null;
+            kind: components["schemas"]["WarningKind"];
+            /** Message */
+            message: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1132,6 +1262,36 @@ export interface components {
              */
             description: string;
         };
+        /**
+         * ScanAction
+         * @enum {string}
+         */
+        ScanAction: "receive" | "external_storage" | "return" | "void";
+        /** ScanRequest */
+        ScanRequest: {
+            action: components["schemas"]["ScanAction"];
+            /** Barcodes */
+            barcodes: string[];
+        };
+        /** ScanResult */
+        ScanResult: {
+            /** Barcode */
+            barcode: string;
+            current_state: components["schemas"]["FrameState"] | null;
+            /** Owner */
+            owner: string | null;
+            /** Safe */
+            safe: boolean;
+            /** Locked */
+            locked: boolean;
+            target_state: components["schemas"]["FrameState"] | null;
+            /** Problem */
+            problem: string | null;
+            /** Warning */
+            warning: string | null;
+            /** Moved */
+            moved: boolean;
+        };
         /** ShippingGroup */
         ShippingGroup: {
             user: components["schemas"]["Recipient"];
@@ -1143,6 +1303,37 @@ export interface components {
          * @enum {string}
          */
         Side: "left" | "right";
+        /** StorageLocation */
+        StorageLocation: {
+            /** Container */
+            container: number;
+            /** Slot */
+            slot: number;
+        };
+        /** StorageSlot */
+        StorageSlot: {
+            /** Container */
+            container: number;
+            /** Slot */
+            slot: number;
+        };
+        /** StoredFrame */
+        StoredFrame: {
+            /** Barcode */
+            barcode: string;
+            /** Container */
+            container: number;
+            /** Slot */
+            slot: number;
+            state: components["schemas"]["FrameState"];
+            owner: components["schemas"]["UserRef"] | null;
+            /** Safe */
+            safe: boolean;
+            /** Locked */
+            locked: boolean;
+            /** Pending Measurements */
+            pending_measurements: number;
+        };
         /**
          * Technique
          * @enum {string}
@@ -1200,6 +1391,11 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * WarningKind
+         * @enum {string}
+         */
+        WarningKind: "on_hold" | "not_locked";
     };
     responses: never;
     parameters: never;
@@ -2100,6 +2296,189 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    move_to_internal_storage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StorageSlot"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    internal_storage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredFrame"][];
+                };
+            };
+        };
+    };
+    list_warnings: {
+        parameters: {
+            query?: {
+                all_users?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FrameWarning"][];
+                };
             };
             /** @description Validation Error */
             422: {

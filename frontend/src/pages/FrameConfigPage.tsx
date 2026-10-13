@@ -36,13 +36,15 @@ import {
   useMeasurements,
 } from "../api/measurements";
 import { useSamples } from "../api/samples";
+import { useRelease } from "../api/scanning";
 import { PageLoader } from "../auth/guards";
+import { hasRole } from "../auth/roles";
 import { FrameView } from "../frames/FrameView";
 import { MeasurementModal } from "../frames/MeasurementModal";
 import { describeMeasurement, MEASUREMENT_STATUS } from "../frames/measurementText";
 import { SafetyCard } from "../frames/SafetyCard";
 import { SamplePicker } from "../frames/SamplePicker";
-import { FRAME_STATE_LABELS } from "../materials/labels";
+import { FrameStateBadge } from "../frames/FrameStateBadge";
 
 const CONFIGURABLE_STATES = ["issued", "shipped_to_user"];
 const MEASUREMENTS_FROZEN_STATES = ["scheduled", "loaded", "returned", "void"];
@@ -59,6 +61,7 @@ export function FrameConfigPage() {
   if (error) return <Alert color="red">{error.message}</Alert>;
 
   const isOwner = Boolean(me?.user && frame.owner?.id === me.user.id);
+  const isOperator = Boolean(me?.user && hasRole(me.user.role, "operator"));
   // Plates, note and sample placement: owner only (requirements §6.6).
   const readOnlyReason = !isOwner
     ? `This is ${frame.owner?.name ?? "another user"}'s frame. Only the owner can change plates and samples.`
@@ -80,7 +83,15 @@ export function FrameConfigPage() {
         <Title order={2} ff="monospace">
           {frame.barcode}
         </Title>
-        <Badge variant="light">{FRAME_STATE_LABELS[frame.state]}</Badge>
+        <FrameStateBadge state={frame.state} />
+        {frame.storage && (
+          <Badge variant="outline" color="gray">
+            Container {frame.storage.container} · Slot {frame.storage.slot}
+          </Badge>
+        )}
+        {isOperator && ["scheduled", "loaded"].includes(frame.state) && (
+          <ReleaseButton barcode={frame.barcode} />
+        )}
       </Group>
       {readOnlyReason && <Alert color="gray">{readOnlyReason}</Alert>}
       <Grid gap="xl">
@@ -371,6 +382,41 @@ function PositionsCard({
         />
       )}
     </Card>
+  );
+}
+
+/** Operator override after a control-software crash: back into its internal-storage slot. */
+function ReleaseButton({ barcode }: { barcode: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const release = useRelease();
+  return (
+    <>
+      <Button size="xs" variant="light" color="orange" onClick={() => setConfirming(true)}>
+        Release to internal storage
+      </Button>
+      <Modal opened={confirming} onClose={() => setConfirming(false)} title="Release frame">
+        <Stack>
+          <Text size="sm">
+            Use this when the control software stopped while handling {barcode}. Put the frame
+            back into its slot by hand first, then release it here before restarting the control
+            software.
+          </Text>
+          {release.isError && <Alert color="red">{release.error.message}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              loading={release.isPending}
+              onClick={() => release.mutate(barcode, { onSuccess: () => setConfirming(false) })}
+            >
+              Release
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
   );
 }
 

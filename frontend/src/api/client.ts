@@ -22,6 +22,10 @@ export type PlacedSample = Schemas["PlacedSample"];
 export type Measurement = Schemas["Measurement"];
 export type MeasurementInput = Schemas["MeasurementInput"];
 export type MeasurementOptions = Schemas["MeasurementOptions"];
+export type ScanAction = Schemas["ScanAction"];
+export type ScanResult = Schemas["ScanResult"];
+export type StoredFrame = Schemas["StoredFrame"];
+export type FrameWarning = Schemas["FrameWarning"];
 
 /** Absolute API base, e.g. http://host/mail-in-xas/api (prod) or .../mail-in-xas/dev/api (dev). */
 export const API_BASE_URL = new URL(`${import.meta.env.BASE_URL}api`, window.location.origin)

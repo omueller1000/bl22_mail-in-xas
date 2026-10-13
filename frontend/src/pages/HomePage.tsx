@@ -1,10 +1,17 @@
 import { Badge, Card, Group, Loader, Stack, Text, Title } from "@mantine/core";
 
+import { useMe } from "../api/auth";
 import { useHealth } from "../api/health";
+import { hasRole } from "../auth/roles";
+import { WarningsCard } from "../components/WarningsCard";
 
 export function HomePage() {
+  const { data: me } = useMe();
+  const role = me?.user?.role;
+
   return (
     <Stack maw={640}>
+      {role && <WarningsCard allUsers={hasRole(role, "operator")} />}
       <Title order={2}>Welcome</Title>
       <Text>
         Request sample frames, define samples and measurements, and view your XAS data from the

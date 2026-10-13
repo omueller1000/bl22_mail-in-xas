@@ -27,6 +27,7 @@ from app.measurements import repository as measurements
 from app.measurements import routes as measurements_routes
 from app.samples import repository as samples
 from app.samples import routes as samples_routes
+from app.scanning import routes as scanning_routes
 from app.users import repository as users
 from app.users import routes as users_routes
 
@@ -77,6 +78,7 @@ def create_app(
     app.include_router(frame_config_routes.router, prefix=prefix)
     app.include_router(safety_routes.router, prefix=prefix)
     app.include_router(measurements_routes.router, prefix=prefix)
+    app.include_router(scanning_routes.router, prefix=prefix)
     app.include_router(material_requests_routes.router, prefix=prefix)
     app.include_router(samples_routes.router, prefix=prefix)
 
@@ -93,6 +95,7 @@ async def _ensure_indexes(db: Database) -> None:
         await frames.ensure_indexes(db)
         await samples.ensure_indexes(db)
         await measurements.ensure_indexes(db)
+        await scanning_routes.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

@@ -73,6 +73,7 @@ function frame(overrides: Partial<Frame> = {}): Frame {
     ],
     safety: null,
     locked: false,
+    storage: null,
     missing: [],
     version: 4,
     created_at: "2026-10-12T00:00:00Z",

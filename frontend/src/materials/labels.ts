@@ -27,6 +27,11 @@ export const FRAME_STATE_LABELS: Record<FrameState, string> = {
   void: "Void",
 };
 
+/** Badge colour of a frame state; undefined = the theme's default colour. */
+export function frameStateColor(state: FrameState): string | undefined {
+  return state === "received_on_hold" ? "red" : undefined;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",

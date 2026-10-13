@@ -43,6 +43,11 @@ class PlacedSample(BaseModel):
     sample_name: str
 
 
+class StorageLocation(BaseModel):
+    container: int
+    slot: int
+
+
 class SafetyDeclaration(BaseModel):
     at: datetime
     by: str
@@ -57,6 +62,8 @@ class Frame(BaseModel):
     positions: list[PlacedSample]
     safety: SafetyDeclaration | None
     locked: bool
+    # Internal-storage slot while the frame is in internal storage, scheduled or loaded.
+    storage: StorageLocation | None
     # What is still missing before the frame can be declared safe; empty = complete.
     missing: list[str]
     # Incremented on every configuration change; sent back with changes to detect conflicts.
@@ -146,6 +153,7 @@ def to_model(
         ],
         safety=SafetyDeclaration(at=safety["at"], by=safety["by"]["name"]) if safety else None,
         locked=doc.get("locked", False),
+        storage=StorageLocation(**doc["storage"]) if doc.get("storage") else None,
         missing=missing,
         version=doc.get("version", 0),
         created_at=doc["created_at"],

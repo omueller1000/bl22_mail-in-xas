@@ -12,8 +12,10 @@ import { MaterialsPage } from "./pages/MaterialsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AllFramesPage } from "./pages/operator/AllFramesPage";
 import { BarcodesPage } from "./pages/operator/BarcodesPage";
+import { InternalStoragePage } from "./pages/operator/InternalStoragePage";
 import { RequestDetailPage } from "./pages/operator/RequestDetailPage";
 import { RequestsPage } from "./pages/operator/RequestsPage";
+import { ScanPage } from "./pages/operator/ScanPage";
 import { ShippingPage } from "./pages/operator/ShippingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { SamplesPage } from "./pages/SamplesPage";
@@ -48,6 +50,8 @@ const router = createBrowserRouter(
                 { path: "operator/barcodes", element: <BarcodesPage /> },
                 { path: "operator/shipping", element: <ShippingPage /> },
                 { path: "operator/frames", element: <AllFramesPage /> },
+                { path: "operator/scan", element: <ScanPage /> },
+                { path: "operator/storage", element: <InternalStoragePage /> },
               ],
             },
           ],

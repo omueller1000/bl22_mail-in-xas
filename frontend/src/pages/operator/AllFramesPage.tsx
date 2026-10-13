@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Group, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Group, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { IconLock, IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -8,6 +8,7 @@ import { useFrames, usePlateTypes } from "../../api/materials";
 import { PageLoader } from "../../auth/guards";
 import { plateSummary } from "../../frames/summary";
 import { FRAME_STATE_LABELS } from "../../materials/labels";
+import { FrameStateBadge } from "../../frames/FrameStateBadge";
 
 /** All issued frames, for Operators (requirements §9.5). */
 export function AllFramesPage() {
@@ -79,7 +80,7 @@ export function AllFramesPage() {
                   </Table.Td>
                   <Table.Td>{frame.owner?.name}</Table.Td>
                   <Table.Td>
-                    <Badge variant="light">{FRAME_STATE_LABELS[frame.state]}</Badge>
+                    <FrameStateBadge state={frame.state} />
                   </Table.Td>
                   <Table.Td>{plateSummary(frame, plateTypes)}</Table.Td>
                   <Table.Td>{frame.positions.length || "—"}</Table.Td>

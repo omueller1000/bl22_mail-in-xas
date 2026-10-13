@@ -48,6 +48,15 @@ async def counts_by_position(db: Database, barcodes: list[str]) -> dict[str, dic
     return result
 
 
+async def pending_counts(db: Database, barcodes: list[str]) -> dict[str, int]:
+    """{barcode: number of pending measurements}."""
+    pipeline = [
+        {"$match": {"frame": {"$in": barcodes}, "status": "pending"}},
+        {"$group": {"_id": "$frame", "n": {"$sum": 1}}},
+    ]
+    return {row["_id"]: row["n"] async for row in await db[COLLECTION].aggregate(pipeline)}
+
+
 async def delete_for_positions(
     db: Database, session: AsyncClientSession, barcode: str, positions: set[str]
 ) -> None:
