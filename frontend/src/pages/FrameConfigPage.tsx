@@ -303,9 +303,6 @@ function PositionsCard({
                 </Group>
                 {ofPosition.map((m) => (
                   <Group key={m.id} gap="xs" wrap="nowrap" pl={78}>
-                    <Text size="sm" c="dimmed" w={20}>
-                      {m.number}
-                    </Text>
                     <Text size="sm" style={{ flex: 1 }}>
                       {describeMeasurement(m, options)}
                     </Text>
