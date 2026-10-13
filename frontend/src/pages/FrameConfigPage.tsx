@@ -32,6 +32,7 @@ import { usePlateTypes } from "../api/materials";
 import { useSamples } from "../api/samples";
 import { PageLoader } from "../auth/guards";
 import { FrameView } from "../frames/FrameView";
+import { SamplePicker } from "../frames/SamplePicker";
 import { FRAME_STATE_LABELS } from "../materials/labels";
 
 const CONFIGURABLE_STATES = ["issued", "shipped_to_user"];
@@ -268,6 +269,15 @@ function PositionsCard({ frame, disabled }: { frame: Frame; disabled: boolean })
   );
 }
 
+/** Sample id -> positions it occupies on this frame. */
+function placementsBySample(frame: Frame): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const p of frame.positions) {
+    result.set(p.sample_id, [...(result.get(p.sample_id) ?? []), p.position]);
+  }
+  return result;
+}
+
 /** Choose, change or remove the sample at one position. */
 function PositionModal({
   frame,
@@ -286,7 +296,15 @@ function PositionModal({
   const fail = (err: Error) => notifications.show({ color: "red", message: err.message });
 
   return (
-    <Modal opened onClose={onClose} title={`Position ${position}`}>
+    <Modal
+      opened
+      onClose={onClose}
+      title={`Position ${position}`}
+      size="lg"
+      // Left-aligned with the same margin as at the top, so the Samples card stays visible.
+      xOffset="5dvh"
+      styles={{ inner: { justifyContent: "flex-start" } }}
+    >
       <Stack>
         {samples.length === 0 && !isPending ? (
           <Text size="sm">
@@ -297,15 +315,11 @@ function PositionModal({
             .
           </Text>
         ) : (
-          <Select
-            label="Sample"
-            placeholder="Choose a sample"
-            searchable
-            data={samples.map((s) => ({ value: s.id, label: s.name }))}
-            value={sampleId}
-            onChange={setSampleId}
-            nothingFoundMessage="No matching sample"
-            data-autofocus
+          <SamplePicker
+            samples={samples}
+            selectedId={sampleId}
+            onSelect={setSampleId}
+            placements={placementsBySample(frame)}
           />
         )}
         <Group justify="space-between">

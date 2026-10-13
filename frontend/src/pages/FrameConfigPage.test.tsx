@@ -83,14 +83,35 @@ describe("FrameConfigPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Left-B: empty" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Position Left-B" });
-    await userEvent.click(within(dialog).getByRole("combobox", { name: "Sample" }));
-    await userEvent.click(await screen.findByRole("option", { name: "CuO" }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Place sample" }));
+    const place = within(dialog).getByRole("button", { name: "Place sample" });
+    expect(place).toBeDisabled();
+    await userEvent.click(within(dialog).getByRole("row", { name: /^CuO/ }));
+    expect(within(dialog).getByRole("row", { name: /^CuO/ })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(place);
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const { url, body } = await lastBody(fetchMock, "PUT");
     expect(url).toMatch(/\/frames\/ABCD-EFGH\/positions\/Left-B$/);
     expect(JSON.parse(body)).toEqual({ version: 4, sample_id: "s2" });
+  });
+
+  it("lists samples newest first and filters them by the search text", async () => {
+    renderPage(frame());
+    await userEvent.click(await screen.findByRole("button", { name: "Left-B: empty" }));
+    const dialog = await screen.findByRole("dialog", { name: "Position Left-B" });
+
+    const names = () =>
+      within(dialog)
+        .getAllByRole("row")
+        .slice(1) // header
+        .map((row) => row.querySelector("td")?.textContent);
+    // Samples already on this frame show their positions.
+    expect(names()).toEqual(["CuO (Right-B)", "Fe2O3 (Left-A)"]);
+
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Search samples" }), "fe");
+    expect(names()).toEqual(["Fe2O3 (Left-A)"]);
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Search samples" }), "xyz");
+    expect(within(dialog).getByText("No matching sample")).toBeInTheDocument();
   });
 
   it("removes a sample from its position with the trash icon", async () => {
