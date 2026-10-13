@@ -1,0 +1,3 @@
+# Store text files with LF line endings in the repository and check them out with LF
+# on every platform, so Windows development and the Rocky Linux VMs see identical files.
+* text=auto eol=lf

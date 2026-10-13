@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 
 from app import __version__, health
 from app.config import Settings, get_settings
@@ -33,9 +34,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=f"{prefix}/openapi.json" if settings.docs_enabled else None,
         docs_url=f"{prefix}/docs" if settings.docs_enabled else None,
         redoc_url=None,
+        # Operation IDs = function names, so generated client code stays readable.
+        generate_unique_id_function=_operation_id,
     )
     app.state.settings = settings
 
     app.include_router(health.router, prefix=prefix)
 
     return app
+
+
+def _operation_id(route: APIRoute) -> str:
+    return route.name
