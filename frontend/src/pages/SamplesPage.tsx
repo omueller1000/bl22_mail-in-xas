@@ -19,7 +19,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconFileTypePdf, IconLock } from "@tabler/icons-react";
+import { IconDots, IconFileTypePdf, IconLock, IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 
 import type { Sample } from "../api/client";
@@ -41,7 +41,12 @@ import { formatDate } from "../materials/labels";
 export function SamplesPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Sample | "new" | null>(null);
+  const [query, setQuery] = useState("");
   const { data: samples, isPending, error } = useSamples(showArchived);
+  const needle = query.trim().toLowerCase();
+  const shown = (samples ?? []).filter(
+    (s) => !needle || [s.name, s.description, ...s.frames].join(" ").toLowerCase().includes(needle),
+  );
 
   return (
     <Stack>
@@ -53,17 +58,29 @@ export function SamplesPage() {
         Define each material once and place it on as many frame positions as you like. Samples
         on a frame declared safe can no longer be changed.
       </Text>
-      <Switch
-        label="Show archived samples"
-        checked={showArchived}
-        onChange={(event) => setShowArchived(event.currentTarget.checked)}
-      />
+      <Group>
+        <TextInput
+          aria-label="Search samples"
+          placeholder="Search by name, description or frame barcode"
+          leftSection={<IconSearch size={16} />}
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          w={360}
+        />
+        <Switch
+          label="Show archived samples"
+          checked={showArchived}
+          onChange={(event) => setShowArchived(event.currentTarget.checked)}
+        />
+      </Group>
       {isPending ? (
         <PageLoader />
       ) : error ? (
         <Alert color="red">{error.message}</Alert>
       ) : samples.length === 0 ? (
         <Text c="dimmed">No samples yet.</Text>
+      ) : shown.length === 0 ? (
+        <Text c="dimmed">No sample matches “{query.trim()}”.</Text>
       ) : (
         <Table.ScrollContainer minWidth={760}>
           <Table striped highlightOnHover>
@@ -78,7 +95,7 @@ export function SamplesPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {samples.map((sample) => (
+              {shown.map((sample) => (
                 <SampleRow key={sample.id} sample={sample} onEdit={() => setEditing(sample)} />
               ))}
             </Table.Tbody>

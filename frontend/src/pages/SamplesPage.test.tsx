@@ -45,6 +45,31 @@ describe("SamplesPage", () => {
     expect(await post.json()).toEqual({ name: "Fe2O3", description: "hematite" });
   });
 
+  it("filters the table by the search text", async () => {
+    mockApi({
+      "GET /samples": () =>
+        json([
+          sample({ id: "s1", name: "Fe2O3", description: "hematite" }),
+          sample({ id: "s2", name: "CuO", description: "tenorite", frames: ["ABCD-EFGH"] }),
+        ]),
+    });
+    renderWithProviders(<SamplesPage />);
+    await screen.findByText("Fe2O3");
+    const search = screen.getByRole("textbox", { name: "Search samples" });
+
+    await userEvent.type(search, "HEMA"); // description, any case
+    expect(screen.getByText("Fe2O3")).toBeInTheDocument();
+    expect(screen.queryByText("CuO")).not.toBeInTheDocument();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "abcd-efgh"); // frame barcode
+    expect(screen.getByText("CuO")).toBeInTheDocument();
+    expect(screen.queryByText("Fe2O3")).not.toBeInTheDocument();
+
+    await userEvent.type(search, "x");
+    expect(screen.getByText("No sample matches “abcd-efghx”.")).toBeInTheDocument();
+  });
+
   it("disables editing frozen samples and deleting undeletable ones", async () => {
     mockApi({
       "GET /samples": () =>
