@@ -1,20 +1,18 @@
 """Frame configuration by its owner: plates, note, sample positions (requirements §8.1).
 
-Every change sends the frame's `version`; if someone else changed the frame meanwhile, the
-request fails with 409 instead of silently overwriting (requirements §12).
+Every change carries the frame's `version` (see app.frames.versioning).
 """
 
-from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
-from pymongo import ReturnDocument
 from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.auth.dependencies import CurrentUser, Db
 from app.frames import configuration as config
 from app.frames import repository as frames
 from app.frames.models import Frame, NoteUpdate, PlatesUpdate, PositionAssign
+from app.frames.versioning import in_transaction, save_versioned
 from app.frames.views import frame_model
 from app.measurements import repository as measurements
 from app.samples import repository as samples
@@ -38,19 +36,21 @@ async def set_plates(barcode: str, body: PlatesUpdate, user: CurrentUser, db: Db
     cleared = {p["position"] for p in doc.get("positions", [])} - {p["position"] for p in kept}
 
     async def apply(session: AsyncClientSession) -> dict[str, Any]:
-        updated = await _save(
+        updated = await save_versioned(
             db, doc["_id"], body.version, {"plates": new_plates, "positions": kept}, session
         )
         await measurements.delete_for_positions(db, session, doc["_id"], cleared)
         return updated
 
-    return await frame_model(db, await _in_transaction(db, apply))
+    return await frame_model(db, await in_transaction(db, apply))
 
 
 @router.put("/{barcode}/note")
 async def set_note(barcode: str, body: NoteUpdate, user: CurrentUser, db: Db) -> Frame:
     doc = await _load_configurable(db, barcode, user)
-    return await frame_model(db, await _save(db, doc["_id"], body.version, {"note": body.note}))
+    return await frame_model(
+        db, await save_versioned(db, doc["_id"], body.version, {"note": body.note})
+    )
 
 
 @router.put("/{barcode}/positions/{position}")
@@ -69,7 +69,7 @@ async def assign_sample(
     positions.append({"position": position, "sample_id": sample["_id"]})
     positions.sort(key=lambda p: p["position"])
     return await frame_model(
-        db, await _save(db, doc["_id"], body.version, {"positions": positions})
+        db, await save_versioned(db, doc["_id"], body.version, {"positions": positions})
     )
 
 
@@ -82,11 +82,11 @@ async def clear_position(
     positions = [p for p in doc.get("positions", []) if p["position"] != position]
 
     async def apply(session: AsyncClientSession) -> dict[str, Any]:
-        updated = await _save(db, doc["_id"], version, {"positions": positions}, session)
+        updated = await save_versioned(db, doc["_id"], version, {"positions": positions}, session)
         await measurements.delete_for_positions(db, session, doc["_id"], {position})
         return updated
 
-    return await frame_model(db, await _in_transaction(db, apply))
+    return await frame_model(db, await in_transaction(db, apply))
 
 
 # --- helpers -------------------------------------------------------------------------------
@@ -107,31 +107,3 @@ def _ensure_position_exists(doc: dict[str, Any], position: str) -> None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, f"Position {position} is not on this frame"
         )
-
-
-async def _save(
-    db: Db,
-    barcode: str,
-    version: int,
-    changes: dict[str, Any],
-    session: AsyncClientSession | None = None,
-) -> dict[str, Any]:
-    """Apply changes if the frame still has the given version; bump the version."""
-    # Frames created before versioning have no version field; treat that as 0.
-    version_filter: Any = version if version else {"$in": [0, None]}
-    updated = await db[frames.COLLECTION].find_one_and_update(
-        {"_id": barcode, "version": version_filter},
-        {"$set": {**changes, "updated_at": datetime.now(UTC)}, "$inc": {"version": 1}},
-        return_document=ReturnDocument.AFTER,
-        session=session,
-    )
-    if updated is None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "The frame was changed elsewhere; please reload"
-        )
-    return updated
-
-
-async def _in_transaction(db: Db, fn: Any) -> dict[str, Any]:
-    async with db.client.start_session() as session:
-        return await session.with_transaction(fn)

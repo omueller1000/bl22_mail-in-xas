@@ -4,7 +4,7 @@ import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import type { Frame, PlateType, Sample } from "../api/client";
-import { json, mockApi } from "../test/mockApi";
+import { json, meResponse, mockApi, TEST_USER } from "../test/mockApi";
 import { renderWithProviders } from "../test/render";
 import { FrameConfigPage } from "./FrameConfigPage";
 
@@ -19,11 +19,52 @@ const SAMPLES: Sample[] = [
   { id: "s1", name: "Fe2O3", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], created_at: "2026-10-12T00:00:00Z", updated_at: "2026-10-12T00:00:00Z" },
 ];
 
+const OPTIONS = {
+  techniques: [
+    { value: "xanes", label: "XANES" },
+    { value: "exafs", label: "EXAFS" },
+  ],
+  elements: [
+    { symbol: "Fe", z: 26 },
+    { symbol: "Cu", z: 29 },
+  ],
+  edges: ["K", "L1", "L2", "L3"].map((e) => ({ value: e, label: e })),
+  detections: [
+    { value: "transmission", label: "Transmission" },
+    { value: "transmission_tfy", label: "Transmission + TFY" },
+    { value: "transmission_sdd", label: "Transmission + SDD" },
+  ],
+  beams: [
+    { value: "unfocused", label: "Unfocused" },
+    { value: "focused", label: "Focused" },
+  ],
+};
+
+const MEASUREMENTS = [
+  {
+    id: "m1",
+    frame: "ABCD-EFGH",
+    position: "Left-A",
+    number: 1,
+    technique: "xanes",
+    element: "Fe",
+    edge: "K",
+    detection: "transmission",
+    beam: "unfocused",
+    status: "pending",
+    error_message: null,
+    executed: false,
+    created_at: "2026-10-13T00:00:00Z",
+    updated_at: "2026-10-13T00:00:00Z",
+    changed_by: "Ada Test",
+  },
+];
+
 function frame(overrides: Partial<Frame> = {}): Frame {
   return {
     barcode: "ABCD-EFGH",
     state: "shipped_to_user",
-    owner: null,
+    owner: { id: TEST_USER.id, name: TEST_USER.name, orcid: TEST_USER.orcid },
     note: "",
     plates: { left: "8-circle", right: "8-circle" },
     positions: [
@@ -32,6 +73,7 @@ function frame(overrides: Partial<Frame> = {}): Frame {
     ],
     safety: null,
     locked: false,
+    missing: [],
     version: 4,
     created_at: "2026-10-12T00:00:00Z",
     updated_at: "2026-10-12T00:00:00Z",
@@ -40,9 +82,16 @@ function frame(overrides: Partial<Frame> = {}): Frame {
   };
 }
 
-function renderPage(current: Frame, extra: Parameters<typeof mockApi>[0] = {}) {
+function renderPage(
+  current: Frame,
+  extra: Parameters<typeof mockApi>[0] = {},
+  user: typeof TEST_USER = TEST_USER,
+) {
   const fetchMock = mockApi({
+    "GET /auth/me": () => json(meResponse({ status: "authenticated", user })),
     "GET /frames/ABCD-EFGH": () => json(current),
+    "GET /frames/ABCD-EFGH/measurements": () => json(MEASUREMENTS),
+    "GET /measurement-options": () => json(OPTIONS),
     "GET /plate-types": () => json(PLATE_TYPES),
     "GET /samples": () => json(SAMPLES),
     ...extra,
@@ -169,5 +218,100 @@ describe("FrameConfigPage", () => {
     expect(screen.getByRole("combobox", { name: "Left" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: /Note/ })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
+  });
+  it("lists measurements per position and adds one", async () => {
+    const fetchMock = renderPage(frame(), {
+      "POST /frames/ABCD-EFGH/positions/Right-B/measurements": () =>
+        json({ ...MEASUREMENTS[0], id: "m2", position: "Right-B" }, 201),
+    });
+    expect(await screen.findByText("XANES · Fe K · Transmission · Unfocused")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+
+    const addButtons = screen.getAllByRole("button", { name: "Add measurement" });
+    await userEvent.click(addButtons[1]!); // Right-B
+    const dialog = await screen.findByRole("dialog", { name: "New measurement at Right-B" });
+    // EXAFS is the default technique; switch to XANES.
+    expect(within(dialog).getByRole("radio", { name: "EXAFS" })).toBeChecked();
+    await userEvent.click(within(dialog).getByText("XANES"));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add measurement" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.parse(localStorage.getItem("ht-xas.lastElementEdge")!)).toEqual({
+      element: "Fe",
+      edge: "K",
+    });
+    localStorage.clear();
+    const post = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "POST")!;
+    expect(JSON.parse(await post.text())).toEqual({
+      version: 4,
+      technique: "xanes",
+      element: "Fe",
+      edge: "K",
+      detection: "transmission",
+      beam: "unfocused",
+    });
+  });
+
+  it("explains the beam options in tooltips", async () => {
+    renderPage(frame());
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add measurement" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "New measurement at Left-A" });
+    await userEvent.hover(within(dialog).getByText("Focused"));
+    expect(await screen.findByText(/polycapillary/)).toBeInTheDocument();
+  });
+
+  it("starts new measurements with the last saved element and edge", async () => {
+    localStorage.setItem("ht-xas.lastElementEdge", JSON.stringify({ element: "Cu", edge: "L3" }));
+    renderPage(frame());
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add measurement" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "New measurement at Left-A" });
+    expect(within(dialog).getByRole("combobox", { name: "Element" })).toHaveValue("Cu (29)");
+    expect(within(dialog).getByRole("radio", { name: "L3" })).toBeChecked();
+    localStorage.clear();
+  });
+
+  it("lists what is missing and declares safe only after confirming", async () => {
+    renderPage(frame({ missing: ["Add a measurement to Right-B"] }));
+    expect(await screen.findByText("Add a measurement to Right-B")).toBeInTheDocument();
+    const declare = screen.getByRole("button", { name: "Declare safe" });
+    await userEvent.click(screen.getByRole("checkbox", { name: /solid and non-hazardous/ }));
+    expect(declare).toBeDisabled(); // still incomplete
+  });
+
+  it("declares a complete frame safe", async () => {
+    const fetchMock = renderPage(frame(), {
+      "POST /frames/ABCD-EFGH/declare-safe": () =>
+        json(frame({ safety: { at: "2026-10-13T00:00:00Z", by: "Ada Test" }, version: 5 })),
+    });
+    const declare = await screen.findByRole("button", { name: "Declare safe" });
+    expect(declare).toBeDisabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: /solid and non-hazardous/ }));
+    await userEvent.click(declare);
+
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([r]) => r.method === "POST")).toBe(true),
+    );
+    const post = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "POST")!;
+    expect(JSON.parse(await post.text())).toEqual({ version: 4, confirm: true });
+  });
+
+  it("freezes measurements when locked and offers unlocking", async () => {
+    renderPage(
+      frame({ safety: { at: "2026-10-13T00:00:00Z", by: "Ada Test" }, locked: true }),
+    );
+    expect(await screen.findByText("Locked")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unlock" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Add measurement" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Edit measurement/ })).not.toBeInTheDocument();
+  });
+
+  it("lets operators edit measurements but not plates, samples or the declaration", async () => {
+    const operator = { ...TEST_USER, id: "op1", name: "Olga Operator", role: "operator" as const };
+    renderPage(frame(), {}, operator);
+    expect(await screen.findByText(/Only the owner can change plates and samples/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Left" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Add measurement" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Declare safe" })).not.toBeInTheDocument();
   });
 });

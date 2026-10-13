@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/operator/barcodes", label: "Barcodes", role: "operator", section: "Operator" },
   { to: "/operator/requests", label: "Material requests", role: "operator", section: "Operator" },
   { to: "/operator/shipping", label: "Shipping", role: "operator", section: "Operator" },
+  { to: "/operator/frames", label: "All frames", role: "operator", section: "Operator" },
   { to: "/users", label: "Users", role: "operator", section: "Operator" },
 ];
 

@@ -57,6 +57,8 @@ class Frame(BaseModel):
     positions: list[PlacedSample]
     safety: SafetyDeclaration | None
     locked: bool
+    # What is still missing before the frame can be declared safe; empty = complete.
+    missing: list[str]
     # Incremented on every configuration change; sent back with changes to detect conflicts.
     version: int
     created_at: datetime
@@ -122,7 +124,10 @@ def user_ref(user: dict[str, Any] | None) -> UserRef | None:
 
 
 def to_model(
-    doc: dict[str, Any], owner: dict[str, Any] | None, sample_names: dict[Any, str]
+    doc: dict[str, Any],
+    owner: dict[str, Any] | None,
+    sample_names: dict[Any, str],
+    missing: list[str],
 ) -> Frame:
     safety = doc.get("safety_declared")
     return Frame(
@@ -141,6 +146,7 @@ def to_model(
         ],
         safety=SafetyDeclaration(at=safety["at"], by=safety["by"]["name"]) if safety else None,
         locked=doc.get("locked", False),
+        missing=missing,
         version=doc.get("version", 0),
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],

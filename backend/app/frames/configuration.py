@@ -60,3 +60,37 @@ def why_not_configurable(frame: dict[str, Any]) -> str | None:
     if frame["state"] not in CONFIGURABLE_STATES:
         return "The frame is no longer with you"
     return None
+
+
+# Measurements cannot change while the frame is with the beamline's scheduler or finished.
+MEASUREMENTS_FROZEN_STATES = {
+    FrameState.SCHEDULED,
+    FrameState.LOADED,
+    FrameState.RETURNED,
+    FrameState.VOID,
+}
+
+
+def why_measurements_frozen(frame: dict[str, Any]) -> str | None:
+    """None if measurements may be added, edited or deleted; otherwise the reason (§6.6)."""
+    if frame["state"] in MEASUREMENTS_FROZEN_STATES:
+        return "Measurements cannot change while the frame is being measured or after it is done"
+    if frame.get("locked"):
+        return "The frame is locked; unlock it to change measurements"
+    return None
+
+
+def missing_for_declaration(frame: dict[str, Any], measurement_counts: dict[str, int]) -> list[str]:
+    """What is still missing before the frame can be declared safe (§6.5); empty = complete."""
+    plates = frame.get("plates") or {}
+    occupied = {p["position"] for p in frame.get("positions", [])}
+    problems = []
+    if not any(plates.get(side.value) for side in Side):
+        problems.append("Mount at least one plate")
+    for side in Side:
+        if plates.get(side.value) and not any(side_of(p) is side for p in occupied):
+            problems.append(f"Place at least one sample on the {side.value} plate")
+    for position in sorted(occupied):
+        if not measurement_counts.get(position):
+            problems.append(f"Add a measurement to {position}")
+    return problems

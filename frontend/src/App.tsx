@@ -10,6 +10,7 @@ import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { MaterialsPage } from "./pages/MaterialsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { AllFramesPage } from "./pages/operator/AllFramesPage";
 import { BarcodesPage } from "./pages/operator/BarcodesPage";
 import { RequestDetailPage } from "./pages/operator/RequestDetailPage";
 import { RequestsPage } from "./pages/operator/RequestsPage";
@@ -46,6 +47,7 @@ const router = createBrowserRouter(
                 { path: "operator/requests/:requestId", element: <RequestDetailPage /> },
                 { path: "operator/barcodes", element: <BarcodesPage /> },
                 { path: "operator/shipping", element: <ShippingPage /> },
+                { path: "operator/frames", element: <AllFramesPage /> },
               ],
             },
           ],

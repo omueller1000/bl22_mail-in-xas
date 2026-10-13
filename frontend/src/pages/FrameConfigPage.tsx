@@ -16,11 +16,12 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconTrash } from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 
-import type { Frame, PlateType } from "../api/client";
+import { useMe } from "../api/auth";
+import type { Frame, Measurement, PlateType } from "../api/client";
 import {
   useAssignSample,
   useClearPosition,
@@ -29,33 +30,50 @@ import {
   useSetPlates,
 } from "../api/frames";
 import { usePlateTypes } from "../api/materials";
+import {
+  useDeleteMeasurement,
+  useMeasurementOptions,
+  useMeasurements,
+} from "../api/measurements";
 import { useSamples } from "../api/samples";
 import { PageLoader } from "../auth/guards";
 import { FrameView } from "../frames/FrameView";
+import { MeasurementModal } from "../frames/MeasurementModal";
+import { describeMeasurement, MEASUREMENT_STATUS } from "../frames/measurementText";
+import { SafetyCard } from "../frames/SafetyCard";
 import { SamplePicker } from "../frames/SamplePicker";
 import { FRAME_STATE_LABELS } from "../materials/labels";
 
 const CONFIGURABLE_STATES = ["issued", "shipped_to_user"];
+const MEASUREMENTS_FROZEN_STATES = ["scheduled", "loaded", "returned", "void"];
 
-/** Mount plates and place samples on a frame (requirements §8.1). */
+/** Mount plates, place samples, define measurements, declare safety and lock (§6.4, §8). */
 export function FrameConfigPage() {
   const { barcode = "" } = useParams();
   const { data: frame, isPending, error } = useFrame(barcode);
   const { data: plateTypes } = usePlateTypes();
+  const { data: me } = useMe();
   const [position, setPosition] = useState<string | null>(null);
 
   if (isPending || !plateTypes) return <PageLoader />;
   if (error) return <Alert color="red">{error.message}</Alert>;
 
-  const readOnlyReason = frame.safety
-    ? "This frame has been declared safe; plates and samples can no longer change."
-    : !CONFIGURABLE_STATES.includes(frame.state)
-      ? "This frame is no longer with you; plates and samples can no longer change."
-      : null;
+  const isOwner = Boolean(me?.user && frame.owner?.id === me.user.id);
+  // Plates, note and sample placement: owner only (requirements §6.6).
+  const readOnlyReason = !isOwner
+    ? `This is ${frame.owner?.name ?? "another user"}'s frame. Only the owner can change plates and samples.`
+    : frame.safety
+      ? "This frame has been declared safe; plates and samples can no longer change."
+      : !CONFIGURABLE_STATES.includes(frame.state)
+        ? "This frame is no longer with you; plates and samples can no longer change."
+        : null;
+  // Measurements: owner or Operator, while unlocked and not being measured.
+  const measurementsEditable =
+    !frame.locked && !MEASUREMENTS_FROZEN_STATES.includes(frame.state);
 
   return (
     <Stack>
-      <Anchor component={Link} to="/frames" size="sm">
+      <Anchor component={Link} to={isOwner ? "/frames" : "/operator/frames"} size="sm">
         ← All frames
       </Anchor>
       <Group>
@@ -78,7 +96,12 @@ export function FrameConfigPage() {
           <Stack>
             <PlatesCard frame={frame} plateTypes={plateTypes} disabled={Boolean(readOnlyReason)} />
             <NoteCard key={frame.version} frame={frame} disabled={Boolean(readOnlyReason)} />
-            <PositionsCard frame={frame} disabled={Boolean(readOnlyReason)} />
+            <PositionsCard
+              frame={frame}
+              configurable={!readOnlyReason}
+              measurementsEditable={measurementsEditable}
+            />
+            <SafetyCard frame={frame} isOwner={isOwner} />
           </Stack>
         </Grid.Col>
       </Grid>
@@ -220,50 +243,135 @@ function NoteCard({ frame, disabled }: { frame: Frame; disabled: boolean }) {
   );
 }
 
-function PositionsCard({ frame, disabled }: { frame: Frame; disabled: boolean }) {
+function PositionsCard({
+  frame,
+  configurable,
+  measurementsEditable,
+}: {
+  frame: Frame;
+  /** Samples can be removed (owner, before the safety declaration). */
+  configurable: boolean;
+  /** Measurements can be added, edited and deleted (frame unlocked, not being measured). */
+  measurementsEditable: boolean;
+}) {
   const clear = useClearPosition(frame);
+  const { data: measurements = [] } = useMeasurements(frame.barcode);
+  const { data: options } = useMeasurementOptions();
+  const remove = useDeleteMeasurement(frame);
+  const [editing, setEditing] = useState<{ position: string; measurement?: Measurement } | null>(
+    null,
+  );
+  const fail = (err: Error) => notifications.show({ color: "red", message: err.message });
 
   return (
     <Card withBorder>
       <Text fw={600} mb="xs">
-        Samples
+        Samples and measurements
       </Text>
       {frame.positions.length === 0 ? (
         <Text size="sm" c="dimmed">
           Click a position on the frame to place a sample.
         </Text>
       ) : (
-        <Stack gap={2}>
-          {frame.positions.map((p) => (
-            <Group key={p.position} gap="xs" wrap="nowrap">
-              <Text size="sm" ff="monospace" w={70}>
-                {p.position}
-              </Text>
-              <Text size="sm" style={{ flex: 1 }}>
-                {p.sample_name}
-              </Text>
-              {!disabled && (
-                <Tooltip label="Remove from this position" withArrow>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    size="sm"
-                    aria-label={`Remove ${p.sample_name} from ${p.position}`}
-                    loading={clear.isPending && clear.variables === p.position}
-                    disabled={clear.isPending}
-                    onClick={() =>
-                      clear.mutate(p.position, {
-                        onError: (err) => notifications.show({ color: "red", message: err.message }),
-                      })
-                    }
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-            </Group>
-          ))}
+        <Stack gap="sm">
+          {frame.positions.map((p) => {
+            const ofPosition = measurements.filter((m) => m.position === p.position);
+            return (
+              <Stack key={p.position} gap={4}>
+                <Group gap="xs" wrap="nowrap">
+                  <Text size="sm" ff="monospace" fw={600} w={70}>
+                    {p.position}
+                  </Text>
+                  <Text size="sm" fw={500} style={{ flex: 1 }}>
+                    {p.sample_name}
+                  </Text>
+                  {configurable && (
+                    <Tooltip label="Remove from this position" withArrow>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        aria-label={`Remove ${p.sample_name} from ${p.position}`}
+                        loading={clear.isPending && clear.variables === p.position}
+                        disabled={clear.isPending}
+                        onClick={() => clear.mutate(p.position, { onError: fail })}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </Group>
+                {ofPosition.map((m) => (
+                  <Group key={m.id} gap="xs" wrap="nowrap" pl={78}>
+                    <Text size="sm" c="dimmed" w={20}>
+                      {m.number}
+                    </Text>
+                    <Text size="sm" style={{ flex: 1 }}>
+                      {describeMeasurement(m, options)}
+                    </Text>
+                    <Badge size="sm" variant="light" color={MEASUREMENT_STATUS[m.status].color}>
+                      {MEASUREMENT_STATUS[m.status].label}
+                    </Badge>
+                    {measurementsEditable && (
+                      <>
+                        <Tooltip label="Edit measurement" withArrow>
+                          <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            size="sm"
+                            aria-label={`Edit measurement ${m.number} at ${p.position}`}
+                            onClick={() => setEditing({ position: p.position, measurement: m })}
+                          >
+                            <IconPencil size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip
+                          label={m.executed ? "Already run; cannot be deleted" : "Delete measurement"}
+                          withArrow
+                        >
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="sm"
+                            aria-label={`Delete measurement ${m.number} at ${p.position}`}
+                            disabled={m.executed || remove.isPending}
+                            loading={remove.isPending && remove.variables === m.id}
+                            onClick={() => remove.mutate(m.id, { onError: fail })}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </>
+                    )}
+                  </Group>
+                ))}
+                {measurementsEditable && (
+                  <Group pl={78}>
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      leftSection={<IconPlus size={14} />}
+                      onClick={() => setEditing({ position: p.position })}
+                    >
+                      Add measurement
+                    </Button>
+                  </Group>
+                )}
+              </Stack>
+            );
+          })}
         </Stack>
+      )}
+      {editing && (
+        <MeasurementModal
+          frame={frame}
+          position={editing.position}
+          sampleName={
+            frame.positions.find((p) => p.position === editing.position)?.sample_name ?? ""
+          }
+          measurement={editing.measurement}
+          onClose={() => setEditing(null)}
+        />
       )}
     </Card>
   );

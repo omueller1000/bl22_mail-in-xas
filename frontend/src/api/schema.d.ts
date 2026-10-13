@@ -353,6 +353,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/frames/{barcode}/declare-safe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Declare Safe */
+        post: operations["declare_safe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lock */
+        post: operations["lock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unlock */
+        post: operations["unlock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/measurement-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Measurement Options */
+        get: operations["measurement_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Measurements */
+        get: operations["list_measurements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/positions/{position}/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Measurement */
+        post: operations["add_measurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/measurements/{measurement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Measurement
+         * @description Change a measurement's settings. Data already collected keeps its own metadata.
+         */
+        put: operations["update_measurement"];
+        post?: never;
+        /** Delete Measurement */
+        delete: operations["delete_measurement"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/material-requests": {
         parameters: {
             query?: never;
@@ -552,11 +675,31 @@ export interface components {
             /** Barcodes */
             barcodes: string[];
         };
+        /**
+         * Beam
+         * @enum {string}
+         */
+        Beam: "unfocused" | "focused";
         /** Body_upload_msds */
         Body_upload_msds: {
             /** File */
             file: string;
         };
+        /** DeclareSafe */
+        DeclareSafe: {
+            /** Version */
+            version: number;
+            /**
+             * Confirm
+             * @constant
+             */
+            confirm: true;
+        };
+        /**
+         * Detection
+         * @enum {string}
+         */
+        Detection: "transmission" | "transmission_tfy" | "transmission_sdd";
         /** DevLogin */
         DevLogin: {
             /** Orcid */
@@ -564,6 +707,18 @@ export interface components {
             /** Name */
             name?: string | null;
             role?: components["schemas"]["Role"] | null;
+        };
+        /**
+         * Edge
+         * @enum {string}
+         */
+        Edge: "K" | "L1" | "L2" | "L3";
+        /** Element */
+        Element: {
+            /** Symbol */
+            symbol: string;
+            /** Z */
+            z: number;
         };
         /** Frame */
         Frame: {
@@ -579,6 +734,8 @@ export interface components {
             safety: components["schemas"]["SafetyDeclaration"] | null;
             /** Locked */
             locked: boolean;
+            /** Missing */
+            missing: string[];
             /** Version */
             version: number;
             /**
@@ -693,6 +850,70 @@ export interface components {
             orcid_name?: string | null;
             user?: components["schemas"]["User"] | null;
         };
+        /** Measurement */
+        Measurement: {
+            /** Id */
+            id: string;
+            /** Frame */
+            frame: string;
+            /** Position */
+            position: string;
+            /** Number */
+            number: number;
+            technique: components["schemas"]["Technique"];
+            /** Element */
+            element: string;
+            edge: components["schemas"]["Edge"];
+            detection: components["schemas"]["Detection"];
+            beam: components["schemas"]["Beam"];
+            status: components["schemas"]["MeasurementStatus"];
+            /** Error Message */
+            error_message: string | null;
+            /** Executed */
+            executed: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Changed By */
+            changed_by: string;
+        };
+        /** MeasurementInput */
+        MeasurementInput: {
+            /** Version */
+            version: number;
+            technique: components["schemas"]["Technique"];
+            /** Element */
+            element: string;
+            edge: components["schemas"]["Edge"];
+            detection: components["schemas"]["Detection"];
+            /** @default unfocused */
+            beam: components["schemas"]["Beam"];
+        };
+        /** MeasurementOptions */
+        MeasurementOptions: {
+            /** Techniques */
+            techniques: components["schemas"]["Option"][];
+            /** Elements */
+            elements: components["schemas"]["Element"][];
+            /** Edges */
+            edges: components["schemas"]["Option"][];
+            /** Detections */
+            detections: components["schemas"]["Option"][];
+            /** Beams */
+            beams: components["schemas"]["Option"][];
+        };
+        /**
+         * MeasurementStatus
+         * @enum {string}
+         */
+        MeasurementStatus: "pending" | "done" | "error";
         /** Msds */
         Msds: {
             /** Filename */
@@ -711,6 +932,13 @@ export interface components {
             version: number;
             /** Note */
             note: string;
+        };
+        /** Option */
+        Option: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
         };
         /** PlacedSample */
         PlacedSample: {
@@ -915,6 +1143,11 @@ export interface components {
          * @enum {string}
          */
         Side: "left" | "right";
+        /**
+         * Technique
+         * @enum {string}
+         */
+        Technique: "xanes" | "exafs";
         /** User */
         User: {
             /** Id */
@@ -961,6 +1194,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VersionOnly */
+        VersionOnly: {
+            /** Version */
+            version: number;
         };
     };
     responses: never;
@@ -1604,6 +1842,264 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Frame"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    declare_safe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclareSafe"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionOnly"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionOnly"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    measurement_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasurementOptions"];
+                };
+            };
+        };
+    };
+    list_measurements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Measurement"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+                position: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeasurementInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Measurement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                measurement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeasurementInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Measurement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_measurement: {
+        parameters: {
+            query: {
+                version: number;
+            };
+            header?: never;
+            path: {
+                measurement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
