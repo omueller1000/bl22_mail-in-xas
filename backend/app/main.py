@@ -21,6 +21,8 @@ from app.db import Database, create_client
 from app.frames import repository as frames
 from app.frames import routes as frames_routes
 from app.material_requests import routes as material_requests_routes
+from app.samples import repository as samples
+from app.samples import routes as samples_routes
 from app.users import repository as users
 from app.users import routes as users_routes
 
@@ -69,6 +71,7 @@ def create_app(
     app.include_router(catalog.router, prefix=prefix)
     app.include_router(frames_routes.router, prefix=prefix)
     app.include_router(material_requests_routes.router, prefix=prefix)
+    app.include_router(samples_routes.router, prefix=prefix)
 
     return app
 
@@ -81,6 +84,7 @@ async def _ensure_indexes(db: Database) -> None:
         await sessions.ensure_indexes(db)
         await orcid.ensure_indexes(db)
         await frames.ensure_indexes(db)
+        await samples.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

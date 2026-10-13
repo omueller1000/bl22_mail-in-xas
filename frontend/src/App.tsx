@@ -13,6 +13,7 @@ import { RequestDetailPage } from "./pages/operator/RequestDetailPage";
 import { RequestsPage } from "./pages/operator/RequestsPage";
 import { ShippingPage } from "./pages/operator/ShippingPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { SamplesPage } from "./pages/SamplesPage";
 import { UsersPage } from "./pages/UsersPage";
 import { Providers } from "./Providers";
 
@@ -32,6 +33,7 @@ const router = createBrowserRouter(
           children: [
             { path: "account", element: <AccountPage /> },
             { path: "materials", element: <MaterialsPage /> },
+            { path: "samples", element: <SamplesPage /> },
             {
               element: <RequireRole role="operator" />,
               children: [

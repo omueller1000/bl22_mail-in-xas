@@ -7,7 +7,7 @@ import { Providers } from "../Providers";
 /** Render a component with the app's providers and an in-memory router. */
 export function renderWithProviders(ui: ReactElement, { route = "/" }: { route?: string } = {}) {
   return render(
-    <Providers>
+    <Providers env="test">
       <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </Providers>,
   );

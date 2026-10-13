@@ -17,6 +17,7 @@ export type ShippingGroup = Schemas["ShippingGroup"];
 export type MaterialRequest = Schemas["MaterialRequest"];
 export type MaterialRequestCreate = Schemas["MaterialRequestCreate"];
 export type RequestState = Schemas["RequestState"];
+export type Sample = Schemas["Sample"];
 
 /** Absolute API base, e.g. http://host/mail-in-xas/api (prod) or .../mail-in-xas/dev/api (dev). */
 export const API_BASE_URL = new URL(`${import.meta.env.BASE_URL}api`, window.location.origin)
