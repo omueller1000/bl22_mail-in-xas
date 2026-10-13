@@ -14,12 +14,12 @@ type Database = AsyncDatabase[dict[str, Any]]
 def create_client(settings: Settings) -> AsyncMongoClient[dict[str, Any]]:
     # The client connects lazily, so the app starts even when MongoDB is down;
     # the health endpoint reports the database state.
-    return AsyncMongoClient(
-        settings.mongodb_uri.get_secret_value(),
-        appname="ht-xas-backend",
-        tz_aware=True,
-        serverSelectionTimeoutMS=5000,
-    )
+    uri = settings.mongodb_uri.get_secret_value()
+    options: dict[str, Any] = {"appname": "ht-xas-backend", "tz_aware": True}
+    # Keyword options override the URI; only set the timeout if the URI does not.
+    if "serverselectiontimeoutms" not in uri.lower():
+        options["serverSelectionTimeoutMS"] = 5000
+    return AsyncMongoClient(uri, **options)
 
 
 def get_db(request: Request) -> Database:

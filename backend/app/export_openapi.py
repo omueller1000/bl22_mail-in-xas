@@ -20,6 +20,8 @@ def build_schema() -> dict[str, object]:
         environment="local",
         mongodb_uri="mongodb://unused",
         mongodb_db="unused",
+        # Include the dev-login endpoint, so the frontend has types for it.
+        dev_login_enabled=True,
     )
     schema = create_app(settings).openapi()
     prefix = settings.api_prefix

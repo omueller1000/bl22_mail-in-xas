@@ -35,6 +35,17 @@ uv run pytest                # DB tests are skipped unless HT_XAS_TEST_MONGODB_U
 uv run ruff check . && uv run ruff format --check .
 ```
 
+Database tests use the `ht_xas_test` database, which they **wipe**. Provide its connection
+either as the environment variable `HT_XAS_TEST_MONGODB_URI` or in `backend/.env.test`
+(git-ignored) containing `HT_XAS_TEST_MONGODB_URI=mongodb://...`.
+
+### Logging in during development
+
+With `HT_XAS_DEV_LOGIN_ENABLED=true`, the login page offers a **dev login**: any valid ORCID iD
+(e.g. `0000-0002-1825-0097`), an optional name and a role. It is refused in production.
+Real ORCID login needs a client registered at https://sandbox.orcid.org with the redirect URI
+`http://localhost:5180/mail-in-xas/api/auth/orcid/callback`; put its id and secret in `.env`.
+
 ## Frontend: local development
 
 Prerequisite: Node.js 24+. Start the backend first (above).
