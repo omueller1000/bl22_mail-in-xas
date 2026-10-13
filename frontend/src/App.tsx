@@ -4,6 +4,8 @@ import { RouterProvider } from "react-router/dom";
 import { RequireRole, RequireUser } from "./auth/guards";
 import { Layout } from "./layout/Layout";
 import { AccountPage } from "./pages/AccountPage";
+import { FrameConfigPage } from "./pages/FrameConfigPage";
+import { FramesPage } from "./pages/FramesPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { MaterialsPage } from "./pages/MaterialsPage";
@@ -34,6 +36,8 @@ const router = createBrowserRouter(
             { path: "account", element: <AccountPage /> },
             { path: "materials", element: <MaterialsPage /> },
             { path: "samples", element: <SamplesPage /> },
+            { path: "frames", element: <FramesPage /> },
+            { path: "frames/:barcode", element: <FrameConfigPage /> },
             {
               element: <RequireRole role="operator" />,
               children: [

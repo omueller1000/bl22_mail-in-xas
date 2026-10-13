@@ -19,6 +19,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home" },
   { to: "/materials", label: "Request materials", role: "user" },
+  { to: "/frames", label: "Frames", role: "user" },
   { to: "/samples", label: "Samples", role: "user" },
   { to: "/account", label: "Account", role: "user" },
   { to: "/operator/barcodes", label: "Barcodes", role: "operator", section: "Operator" },

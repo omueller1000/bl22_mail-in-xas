@@ -12,6 +12,7 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.auth.dependencies import CurrentUser, Db, is_operator
 from app.frames import repository as frames
 from app.frames.states import TERMINAL
+from app.measurements import repository as measurements
 from app.samples import repository as samples
 from app.samples.models import MSDS_MAX_BYTES, ArchiveUpdate, Sample, SampleInput
 from app.users import repository as users
@@ -73,13 +74,16 @@ async def delete_sample(sample_id: str, user: CurrentUser, db: Db) -> None:
             )
         # Free its positions on frames still being assembled (returned/void frames keep their
         # history). Measurements of those positions go with them (none can have been executed).
-        open_frames = [f["_id"] for f in placed if f["state"] not in TERMINAL]
-        if open_frames:
-            await db[frames.COLLECTION].update_many(
-                {"_id": {"$in": open_frames}},
-                {"$pull": {"positions": {"sample_id": doc["_id"]}}},
+        for frame in placed:
+            if frame["state"] in TERMINAL:
+                continue
+            freed = {p["position"] for p in frame["positions"] if p["sample_id"] == doc["_id"]}
+            await db[frames.COLLECTION].update_one(
+                {"_id": frame["_id"]},
+                {"$pull": {"positions": {"sample_id": doc["_id"]}}, "$inc": {"version": 1}},
                 session=session,
             )
+            await measurements.delete_for_positions(db, session, frame["_id"], freed)
         await db[samples.COLLECTION].delete_one({"_id": doc["_id"]}, session=session)
 
     async with db.client.start_session() as session:

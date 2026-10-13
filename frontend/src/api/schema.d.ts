@@ -292,6 +292,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/frames/{barcode}/plates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Plates
+         * @description Mount plates. Positions on a side whose plate changes are cleared with their measurements.
+         */
+        put: operations["set_plates"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Note */
+        put: operations["set_note"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/positions/{position}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign Sample
+         * @description Place one of the user's samples at a position (or replace the sample there).
+         */
+        put: operations["assign_sample"];
+        post?: never;
+        /**
+         * Clear Position
+         * @description Remove the sample from a position, together with the position's measurements.
+         */
+        delete: operations["clear_position"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/material-requests": {
         parameters: {
             query?: never;
@@ -510,6 +571,16 @@ export interface components {
             barcode: string;
             state: components["schemas"]["FrameState"];
             owner: components["schemas"]["UserRef"] | null;
+            /** Note */
+            note: string;
+            plates: components["schemas"]["Plates"];
+            /** Positions */
+            positions: components["schemas"]["PlacedSample"][];
+            safety: components["schemas"]["SafetyDeclaration"] | null;
+            /** Locked */
+            locked: boolean;
+            /** Version */
+            version: number;
             /**
              * Created At
              * Format: date-time
@@ -634,6 +705,22 @@ export interface components {
              */
             uploaded_at: string;
         };
+        /** NoteUpdate */
+        NoteUpdate: {
+            /** Version */
+            version: number;
+            /** Note */
+            note: string;
+        };
+        /** PlacedSample */
+        PlacedSample: {
+            /** Position */
+            position: string;
+            /** Sample Id */
+            sample_id: string;
+            /** Sample Name */
+            sample_name: string;
+        };
         /** PlateQuantity */
         PlateQuantity: {
             /** Plate Type */
@@ -653,6 +740,32 @@ export interface components {
             sides: components["schemas"]["Side"][];
             /** Blocks Other Side */
             blocks_other_side: boolean;
+        };
+        /**
+         * Plates
+         * @description Plate type ids mounted on each side; None = empty side.
+         */
+        Plates: {
+            /** Left */
+            left?: string | null;
+            /** Right */
+            right?: string | null;
+        };
+        /** PlatesUpdate */
+        PlatesUpdate: {
+            /** Version */
+            version: number;
+            /** Left */
+            left?: string | null;
+            /** Right */
+            right?: string | null;
+        };
+        /** PositionAssign */
+        PositionAssign: {
+            /** Version */
+            version: number;
+            /** Sample Id */
+            sample_id: string;
         };
         /**
          * Profile
@@ -742,6 +855,16 @@ export interface components {
         /** RoleUpdate */
         RoleUpdate: {
             role: components["schemas"]["Role"];
+        };
+        /** SafetyDeclaration */
+        SafetyDeclaration: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** By */
+            by: string;
         };
         /** Sample */
         Sample: {
@@ -1328,6 +1451,146 @@ export interface operations {
             header?: never;
             path: {
                 barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_plates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+                position: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionAssign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_position: {
+        parameters: {
+            query: {
+                version: number;
+            };
+            header?: never;
+            path: {
+                barcode: string;
+                position: string;
             };
             cookie?: never;
         };

@@ -143,7 +143,7 @@ Each plate type is stored as data: name, position labels, allowed sides, whether
 | Option | Values |
 |---|---|
 | Technique | XANES, EXAFS (fixed beamline presets) |
-| Element | any element |
+| Element | Ti (Z = 22) to Bi (Z = 83) for now |
 | Edge | K, L1, L2, L3 |
 | Detection | Transmission; Transmission + TFY; Transmission + SDD |
 | Beam | Unfocused (default); Focused |
@@ -160,7 +160,7 @@ A **frame** is the physical holder; it carries a unique **barcode** and up to tw
 
 - **Barcode format:** `XXXX-XXXX`, uppercase letters A–Z, generated server-side, unique, **never reused**. Encoded as **Code128** (1D).
 - Operators print labels manually on a handheld label printer; the portal shows the reserved codes so they can be typed/printed.
-- Each frame stores: barcode, owner (once issued), state, lock flag, safety declaration, internal-storage location (when applicable), plates, state history (state, actor, timestamp).
+- Each frame stores: barcode, owner (once issued), state, lock flag, safety declaration, internal-storage location (when applicable), plates, an optional free-text **note** by the user (e.g. "batch 2, Fe catalysts"; editable until the safety declaration), state history (state, actor, timestamp).
 
 ### 6.2 Frame states
 
@@ -210,7 +210,7 @@ All other transitions are rejected by the backend.
 These are flags, independent of the frame state, but ordered: **a frame can only be locked after it has been declared safe.**
 
 **Safety declaration**
-- Per frame (covers all samples on it): the user confirms by checkbox that all samples are **solid and non-hazardous**.
+- Per frame (covers all samples on it): the user ticks the checkbox *"I declare that all samples on this frame are solid and non-hazardous."*
 - Only the frame's owner can declare it. **No one** (not even Admin) can set it on their behalf or override it.
 - Requires a valid frame (§6.5).
 - Once declared, it cannot be withdrawn.

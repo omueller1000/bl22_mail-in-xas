@@ -1,4 +1,4 @@
-"""Frame and barcode endpoints for M2: reserve, list, look up, ship (requirements §6, §9.3)."""
+"""Frame and barcode endpoints: reserve, list, look up, ship (requirements §6, §9.3)."""
 
 from typing import Any
 
@@ -13,9 +13,9 @@ from app.frames.models import (
     Recipient,
     ReserveBarcodes,
     ShippingGroup,
-    to_model,
 )
 from app.frames.states import FrameState
+from app.frames.views import frame_model, frame_models
 from app.material_requests import repository as material_requests
 from app.users import repository as users
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/frames", tags=["frames"])
 async def reserve_barcodes(body: ReserveBarcodes, operator: Operator, db: Db) -> list[Frame]:
     """Generate new barcodes for printing labels (state reserved)."""
     docs = await frames.reserve(db, body.count, operator)
-    return [to_model(doc, None) for doc in sorted(docs, key=lambda d: d["_id"])]
+    return await frame_models(db, sorted(docs, key=lambda d: d["_id"]))
 
 
 @router.get("")
@@ -41,9 +41,7 @@ async def list_frames(
         query["owner_id"] = user["_id"]
     if state:
         query["state"] = state.value
-    docs = await frames.find(db, query)
-    owners = await users.get_many(db, {d["owner_id"] for d in docs if d["owner_id"]})
-    return [to_model(doc, owners.get(doc["owner_id"])) for doc in docs]
+    return await frame_models(db, await frames.find(db, query))
 
 
 @router.get("/shipping")
@@ -97,9 +95,7 @@ async def mark_shipped(body: BarcodeList, operator: Operator, db: Db) -> list[Fr
 
     async with db.client.start_session() as session:
         await session.with_transaction(ship)
-    docs = await frames.find(db, {"_id": {"$in": barcodes}})
-    owners = await users.get_many(db, {d["owner_id"] for d in docs})
-    return [to_model(doc, owners.get(doc["owner_id"])) for doc in docs]
+    return await frame_models(db, await frames.find(db, {"_id": {"$in": barcodes}}))
 
 
 @router.get("/{barcode}")
@@ -107,5 +103,4 @@ async def get_frame(barcode: str, user: CurrentUser, db: Db) -> Frame:
     doc = await frames.get(db, frames.normalize_barcode(barcode))
     if doc is None or (doc["owner_id"] != user["_id"] and not is_operator(user)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frame not found")
-    owner = await users.get_by_id(db, doc["owner_id"]) if doc["owner_id"] else None
-    return to_model(doc, owner)
+    return await frame_model(db, doc)

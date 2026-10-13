@@ -136,3 +136,25 @@ async def login_as(client: AsyncClient, orcid_id: str, role: str = "user") -> di
     if me["status"] == "authenticated":
         return me["user"]
     return await register(client)
+
+
+async def issue_frames(client: AsyncClient, user_orcid: str, count: int = 1) -> list[str]:
+    """Give a user `count` issued frames (via a request issued by an operator).
+
+    Leaves the client logged in as that user.
+    """
+    await login_as(client, user_orcid)
+    response = await client.post(f"{API}/material-requests", json={"plates": [], "frames": count})
+    assert response.status_code == 201, response.text
+    request_id = response.json()["id"]
+
+    await login_as(client, orcid(999), role="operator")
+    response = await client.post(f"{API}/frames/reserve", json={"count": count})
+    codes = [frame["barcode"] for frame in response.json()]
+    response = await client.post(
+        f"{API}/material-requests/{request_id}/issue", json={"barcodes": codes}
+    )
+    assert response.status_code == 200, response.text
+
+    await login_as(client, user_orcid)
+    return codes

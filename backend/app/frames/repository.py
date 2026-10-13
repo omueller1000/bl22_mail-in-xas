@@ -1,7 +1,8 @@
 """Database access for frames. A frame document exists from the moment its barcode is reserved.
 
-Document: {_id: barcode, state, owner_id, request_id, history: [{state, at, actor}],
-           created_at, updated_at}
+Document: {_id: barcode, state, owner_id, request_id, note, plates: {left, right},
+           positions: [{position, sample_id}], safety_declared: {at, by} | None, locked,
+           version, history: [{state, at, actor}], created_at, updated_at}
 """
 
 import re
@@ -54,6 +55,12 @@ async def reserve(db: Database, count: int, by: dict[str, Any]) -> list[dict[str
                 "state": FrameState.RESERVED.value,
                 "owner_id": None,
                 "request_id": None,
+                "note": "",
+                "plates": {"left": None, "right": None},
+                "positions": [],
+                "safety_declared": None,
+                "locked": False,
+                "version": 0,
                 "history": [{"state": FrameState.RESERVED.value, "at": now, "actor": actor(by)}],
                 "created_at": now,
                 "updated_at": now,
