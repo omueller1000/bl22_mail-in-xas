@@ -124,14 +124,15 @@ All fields except ORCID iD and name are editable by the user afterwards.
 
 Plate types are maintained by Admins but **seeded and fixed** in this version (no editing UI).
 
-| Plate type | Positions | Notes |
-|---|---|---|
-| 8-Circle | A–H | |
-| 8-Slot | A–H | |
-| 8-Circle-Gas | A–H | "Gas" = gas-sensitive samples |
-| 6-Circle-Gas | A–F | |
+| Plate type | Positions | Mountable on | Other side |
+|---|---|---|---|
+| 8-Circle | A–H | Left or Right | free |
+| 8-Slot | A–H | Left or Right | free |
+| 6-Circle-Gas | A–F | **Left only** | **blocked** (the plate spans the whole frame) |
 
-Each plate type is stored as data: name, list of position labels, and drawing information (image + position coordinates) for the interactive frame view. Exact position layouts are taken from v1.
+"Gas" = for gas-sensitive samples. (v1's 8-Circle-Gas plate is obsolete and not implemented.)
+
+Each plate type is stored as data: name, position labels, allowed sides, whether it blocks the other side, and drawing information (image + position coordinates) for the interactive frame view. Images and position layouts are taken from v1. A future special plate needs only a new catalog entry.
 
 ### 5.2 Position identifier
 
@@ -256,13 +257,23 @@ Email notifications will be specified later.
 
 - A user requests plates by type and a number of frames:
   - lines: (plate type, quantity N₁), (plate type, quantity N₂), …; total plates ΣN ≥ 1
-  - frames M with **⌈ΣN / 2⌉ ≤ M ≤ ΣN**
+  - frames M with **N_gas + ⌈(ΣN − N_gas) / 2⌉ ≤ M ≤ ΣN**, where N_gas is the number of plates that block the other side (6-Circle-Gas), since each of them needs a frame of its own
+  - a request may contain **frames only** (ΣN = 0); then M ≥ 1
   - plates, frames and screws are shipped; no return labels.
-- States: `submitted` → `fulfilled` or `rejected`. All-or-nothing; no partial fulfilment.
-- **Fulfil:** an Operator opens the request, scans exactly M `reserved` barcodes, and confirms → all M frames become `issued` to the requesting user, request becomes `fulfilled`.
-- **Reject:** Operator, with an optional reason shown to the user.
+- States: `submitted` → `issued` → `fulfilled`, or `submitted` → `rejected`. All-or-nothing; no partial issuing.
+
+  | State | Meaning | Operator sees | User sees |
+  |---|---|---|---|
+  | `submitted` | waiting for an operator | Open | Submitted |
+  | `issued` | barcodes issued, frames being packed | Issued (to be shipped) | Being prepared |
+  | `fulfilled` | all frames of the request shipped | Fulfilled | Shipped (with barcodes) |
+  | `rejected` | declined | Rejected | Rejected (with reason) |
+
+- **Issue:** an Operator opens the request, scans exactly M `reserved` barcodes, and confirms → all M frames become `issued` to the requesting user, request becomes `issued`.
+- **Fulfilled** automatically when the last frame of the request is marked shipped (§9.3).
+- **Reject:** Operator, with an optional reason shown to the user; only while `submitted`.
 - Users cannot cancel or edit a submitted request.
-- Plates are tracked "virtually": the request records what was sent. Users may nevertheless assemble any plate type from the catalog (§8.1).
+- Plates are **not tracked**: the request records which plates were asked for, so the operator knows what to pack. Only barcodes (frames) are tracked. Users may assemble any plate type from the catalog (§8.1).
 
 ---
 
@@ -272,7 +283,8 @@ Email notifications will be specified later.
 
 Similar to v1's *Create* page:
 1. Choose a frame from a **dropdown of barcodes issued to this user** (state `issued` or `shipped_to_user`).
-2. Choose a plate type for Left and/or Right (any catalog type; one side may be empty).
+2. Choose a plate type for Left and/or Right (any catalog type; one side may be empty; side rules of §5.1 apply, e.g. 6-Circle-Gas only Left and then no Right plate).
+   - Changing or removing a plate whose positions hold samples asks for confirmation and then clears the affected positions, including their measurements (only possible before the safety declaration, §6.6).
 3. Click a position on the plate drawing → assign one of the user's samples. The **sample picker** lists non-archived samples, newest first (by creation date).
 4. Add measurements to occupied positions.
 5. Declare safety and lock.

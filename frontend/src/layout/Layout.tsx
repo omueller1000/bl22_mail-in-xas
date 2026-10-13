@@ -1,5 +1,6 @@
 import { AppShell, Badge, Burger, Button, Group, Menu, NavLink, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { Fragment } from "react";
 import { Link, NavLink as RouterNavLink, Outlet, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../api/auth";
@@ -11,12 +12,18 @@ interface NavItem {
   label: string;
   /** Minimum role; omitted = visible to everyone. */
   role?: Role;
+  /** Heading shown above the first item of a section. */
+  section?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home" },
+  { to: "/materials", label: "Request materials", role: "user" },
   { to: "/account", label: "Account", role: "user" },
-  { to: "/users", label: "Users", role: "operator" },
+  { to: "/operator/barcodes", label: "Barcodes", role: "operator", section: "Operator" },
+  { to: "/operator/requests", label: "Material requests", role: "operator", section: "Operator" },
+  { to: "/operator/shipping", label: "Shipping", role: "operator", section: "Operator" },
+  { to: "/users", label: "Users", role: "operator", section: "Operator" },
 ];
 
 export function Layout() {
@@ -42,15 +49,21 @@ export function Layout() {
       </AppShell.Header>
 
       <AppShell.Navbar p="xs">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            component={RouterNavLink}
-            to={item.to}
-            end={item.to === "/"}
-            label={item.label}
-            onClick={close}
-          />
+        {items.map((item, index) => (
+          <Fragment key={item.to}>
+            {item.section && item.section !== items[index - 1]?.section && (
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mt="md" mb={4} px="sm">
+                {item.section}
+              </Text>
+            )}
+            <NavLink
+              component={RouterNavLink}
+              to={item.to}
+              end={item.to === "/"}
+              label={item.label}
+              onClick={close}
+            />
+          </Fragment>
         ))}
       </AppShell.Navbar>
 

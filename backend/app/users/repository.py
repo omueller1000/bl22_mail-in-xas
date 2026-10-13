@@ -38,6 +38,11 @@ async def get_by_id(db: Database, user_id: ObjectId) -> dict[str, Any] | None:
     return await db[COLLECTION].find_one({"_id": user_id})
 
 
+async def get_many(db: Database, user_ids: set[ObjectId]) -> dict[ObjectId, dict[str, Any]]:
+    docs = await db[COLLECTION].find({"_id": {"$in": list(user_ids)}}).to_list()
+    return {doc["_id"]: doc for doc in docs}
+
+
 async def get_by_orcid(db: Database, orcid: str) -> dict[str, Any] | None:
     return await db[COLLECTION].find_one({"orcid": orcid})
 

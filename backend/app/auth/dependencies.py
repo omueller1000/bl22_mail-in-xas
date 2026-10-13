@@ -64,6 +64,16 @@ Operator = Annotated[dict[str, Any], Depends(require_role(Role.OPERATOR))]
 Admin = Annotated[dict[str, Any], Depends(require_role(Role.ADMIN))]
 
 
+def is_operator(user: dict[str, Any]) -> bool:
+    return Role(user["role"]).includes(Role.OPERATOR)
+
+
+def ensure_operator(user: dict[str, Any]) -> None:
+    """For endpoints open to users that offer extra options to Operators."""
+    if not is_operator(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires role {Role.OPERATOR.value}")
+
+
 def set_session_cookie(response: Response, settings: Settings, token: str) -> None:
     response.set_cookie(
         settings.session_cookie_name,

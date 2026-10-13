@@ -176,6 +176,199 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plate-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plate Types */
+        get: operations["list_plate_types"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/reserve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reserve Barcodes
+         * @description Generate new barcodes for printing labels (state reserved).
+         */
+        post: operations["reserve_barcodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Frames
+         * @description Own frames; Operators may list all frames with `all_users=true`.
+         */
+        get: operations["list_frames"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/shipping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shipping List
+         * @description Issued but not yet shipped frames, grouped by user, with shipping details (§9.3).
+         */
+        get: operations["shipping_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Shipped
+         * @description Mark issued frames as shipped to their users (all or nothing).
+         *
+         *     Material requests whose frames have all shipped become fulfilled.
+         */
+        post: operations["mark_shipped"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Frame */
+        get: operations["get_frame"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/material-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Requests
+         * @description Own requests; Operators may list everyone's with `all_users=true`.
+         */
+        get: operations["list_requests"];
+        put?: never;
+        /** Create Request */
+        post: operations["create_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/material-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Request */
+        get: operations["get_request"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/material-requests/{request_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Request */
+        post: operations["reject_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/material-requests/{request_id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue Barcodes
+         * @description Issue exactly the requested number of reserved barcodes to the requester (all or nothing).
+         *
+         *     The request becomes fulfilled once its frames are marked shipped (frames/ship).
+         */
+        post: operations["issue_barcodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -203,6 +396,11 @@ export interface components {
             /** Country */
             country: string;
         };
+        /** BarcodeList */
+        BarcodeList: {
+            /** Barcodes */
+            barcodes: string[];
+        };
         /** DevLogin */
         DevLogin: {
             /** Orcid */
@@ -211,6 +409,41 @@ export interface components {
             name?: string | null;
             role?: components["schemas"]["Role"] | null;
         };
+        /** Frame */
+        Frame: {
+            /** Barcode */
+            barcode: string;
+            state: components["schemas"]["FrameState"];
+            owner: components["schemas"]["UserRef"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** History */
+            history: components["schemas"]["FrameEvent"][];
+        };
+        /** FrameEvent */
+        FrameEvent: {
+            state: components["schemas"]["FrameState"];
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** By */
+            by: string;
+        };
+        /**
+         * FrameState
+         * @enum {string}
+         */
+        FrameState: "reserved" | "issued" | "shipped_to_user" | "received" | "received_on_hold" | "external_storage" | "internal_storage" | "scheduled" | "loaded" | "returned" | "void";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -233,6 +466,50 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** IssueBarcodes */
+        IssueBarcodes: {
+            /** Barcodes */
+            barcodes: string[];
+        };
+        /** MaterialRequest */
+        MaterialRequest: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: number;
+            user: components["schemas"]["Requester"];
+            /** Plates */
+            plates: components["schemas"]["PlateQuantity"][];
+            /** Frames */
+            frames: number;
+            /** Comment */
+            comment: string | null;
+            state: components["schemas"]["RequestState"];
+            /** Reject Reason */
+            reject_reason: string | null;
+            /** Barcodes */
+            barcodes: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Fulfilled At */
+            fulfilled_at: string | null;
+        };
+        /** MaterialRequestCreate */
+        MaterialRequestCreate: {
+            /** Plates */
+            plates?: components["schemas"]["PlateQuantity"][];
+            /** Frames */
+            frames: number;
+            /** Comment */
+            comment?: string | null;
+        };
         /** Me */
         Me: {
             /**
@@ -250,6 +527,26 @@ export interface components {
             orcid_name?: string | null;
             user?: components["schemas"]["User"] | null;
         };
+        /** PlateQuantity */
+        PlateQuantity: {
+            /** Plate Type */
+            plate_type: string;
+            /** Quantity */
+            quantity: number;
+        };
+        /** PlateType */
+        PlateType: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Positions */
+            positions: string[];
+            /** Sides */
+            sides: components["schemas"]["Side"][];
+            /** Blocks Other Side */
+            blocks_other_side: boolean;
+        };
         /**
          * Profile
          * @description The fields a user can edit after registration.
@@ -259,6 +556,25 @@ export interface components {
              * Email
              * Format: email
              */
+            email: string;
+            /** Phone */
+            phone: string;
+            /** Affiliation */
+            affiliation: string;
+            shipping_address: components["schemas"]["Address"];
+        };
+        /**
+         * Recipient
+         * @description Contact details an operator needs to ship to a user.
+         */
+        Recipient: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Orcid */
+            orcid: string;
+            /** Email */
             email: string;
             /** Phone */
             phone: string;
@@ -281,6 +597,35 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** Reject */
+        Reject: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * RequestState
+         * @enum {string}
+         */
+        RequestState: "submitted" | "issued" | "fulfilled" | "rejected";
+        /**
+         * Requester
+         * @description The requesting user, with the email operators need to contact them.
+         */
+        Requester: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Orcid */
+            orcid: string;
+            /** Email */
+            email: string;
+        };
+        /** ReserveBarcodes */
+        ReserveBarcodes: {
+            /** Count */
+            count: number;
+        };
         /**
          * Role
          * @description Person roles, in increasing order of privilege.
@@ -291,6 +636,17 @@ export interface components {
         RoleUpdate: {
             role: components["schemas"]["Role"];
         };
+        /** ShippingGroup */
+        ShippingGroup: {
+            user: components["schemas"]["Recipient"];
+            /** Barcodes */
+            barcodes: string[];
+        };
+        /**
+         * Side
+         * @enum {string}
+         */
+        Side: "left" | "right";
         /** User */
         User: {
             /** Id */
@@ -315,6 +671,15 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** UserRef */
+        UserRef: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Orcid */
+            orcid: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -661,6 +1026,341 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plate_types: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlateType"][];
+                };
+            };
+        };
+    };
+    reserve_barcodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReserveBarcodes"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_frames: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["FrameState"] | null;
+                all_users?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shipping_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingGroup"][];
+                };
+            };
+        };
+    };
+    mark_shipped: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BarcodeList"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_frame: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_requests: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["RequestState"] | null;
+                all_users?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRequest"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Reject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_barcodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueBarcodes"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRequest"];
                 };
             };
             /** @description Validation Error */

@@ -31,3 +31,8 @@ class ResizeObserverStub {
 window.ResizeObserver = ResizeObserverStub;
 
 window.HTMLElement.prototype.scrollIntoView = () => {};
+
+// Used by Mantine's auto-growing Textarea.
+Object.defineProperty(document, "fonts", {
+  value: { addEventListener: () => {}, removeEventListener: () => {} },
+});

@@ -10,6 +10,13 @@ export type Profile = Schemas["Profile"];
 export type Registration = Schemas["Registration"];
 export type Address = Schemas["Address"];
 export type Role = Schemas["Role"];
+export type PlateType = Schemas["PlateType"];
+export type Frame = Schemas["Frame"];
+export type FrameState = Schemas["FrameState"];
+export type ShippingGroup = Schemas["ShippingGroup"];
+export type MaterialRequest = Schemas["MaterialRequest"];
+export type MaterialRequestCreate = Schemas["MaterialRequestCreate"];
+export type RequestState = Schemas["RequestState"];
 
 /** Absolute API base, e.g. http://host/mail-in-xas/api (prod) or .../mail-in-xas/dev/api (dev). */
 export const API_BASE_URL = new URL(`${import.meta.env.BASE_URL}api`, window.location.origin)

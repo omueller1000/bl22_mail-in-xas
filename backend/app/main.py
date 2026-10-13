@@ -12,12 +12,15 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pymongo.errors import PyMongoError
 
-from app import __version__, health
+from app import __version__, catalog, health
 from app.auth import orcid, sessions
 from app.auth import routes as auth_routes
 from app.config import Settings, get_settings
 from app.csrf import csrf_middleware
 from app.db import Database, create_client
+from app.frames import repository as frames
+from app.frames import routes as frames_routes
+from app.material_requests import routes as material_requests_routes
 from app.users import repository as users
 from app.users import routes as users_routes
 
@@ -63,6 +66,9 @@ def create_app(
     if settings.dev_login_enabled:
         app.include_router(auth_routes.dev_router, prefix=prefix)
     app.include_router(users_routes.router, prefix=prefix)
+    app.include_router(catalog.router, prefix=prefix)
+    app.include_router(frames_routes.router, prefix=prefix)
+    app.include_router(material_requests_routes.router, prefix=prefix)
 
     return app
 
@@ -74,6 +80,7 @@ async def _ensure_indexes(db: Database) -> None:
         await users.ensure_indexes(db)
         await sessions.ensure_indexes(db)
         await orcid.ensure_indexes(db)
+        await frames.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

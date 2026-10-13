@@ -131,6 +131,8 @@ async def register(client: AsyncClient, **overrides: Any) -> dict[str, Any]:
 
 
 async def login_as(client: AsyncClient, orcid_id: str, role: str = "user") -> dict[str, Any]:
-    """Dev-login and register in one go; returns the user."""
-    await dev_login(client, orcid_id, role=role)
+    """Dev-login (registering the account if it is new) with the given role; returns the user."""
+    me = await dev_login(client, orcid_id, role=role)
+    if me["status"] == "authenticated":
+        return me["user"]
     return await register(client)
