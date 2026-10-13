@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Anchor,
   Badge,
@@ -12,8 +13,10 @@ import {
   Text,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 
@@ -74,7 +77,7 @@ export function FrameConfigPage() {
           <Stack>
             <PlatesCard frame={frame} plateTypes={plateTypes} disabled={Boolean(readOnlyReason)} />
             <NoteCard key={frame.version} frame={frame} disabled={Boolean(readOnlyReason)} />
-            <PositionsCard frame={frame} />
+            <PositionsCard frame={frame} disabled={Boolean(readOnlyReason)} />
           </Stack>
         </Grid.Col>
       </Grid>
@@ -216,7 +219,9 @@ function NoteCard({ frame, disabled }: { frame: Frame; disabled: boolean }) {
   );
 }
 
-function PositionsCard({ frame }: { frame: Frame }) {
+function PositionsCard({ frame, disabled }: { frame: Frame; disabled: boolean }) {
+  const clear = useClearPosition(frame);
+
   return (
     <Card withBorder>
       <Text fw={600} mb="xs">
@@ -229,11 +234,32 @@ function PositionsCard({ frame }: { frame: Frame }) {
       ) : (
         <Stack gap={2}>
           {frame.positions.map((p) => (
-            <Group key={p.position} gap="xs">
+            <Group key={p.position} gap="xs" wrap="nowrap">
               <Text size="sm" ff="monospace" w={70}>
                 {p.position}
               </Text>
-              <Text size="sm">{p.sample_name}</Text>
+              <Text size="sm" style={{ flex: 1 }}>
+                {p.sample_name}
+              </Text>
+              {!disabled && (
+                <Tooltip label="Remove from this position" withArrow>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    aria-label={`Remove ${p.sample_name} from ${p.position}`}
+                    loading={clear.isPending && clear.variables === p.position}
+                    disabled={clear.isPending}
+                    onClick={() =>
+                      clear.mutate(p.position, {
+                        onError: (err) => notifications.show({ color: "red", message: err.message }),
+                      })
+                    }
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           ))}
         </Stack>

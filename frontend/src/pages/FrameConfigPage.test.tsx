@@ -93,6 +93,26 @@ describe("FrameConfigPage", () => {
     expect(JSON.parse(body)).toEqual({ version: 4, sample_id: "s2" });
   });
 
+  it("removes a sample from its position with the trash icon", async () => {
+    let current = frame();
+    const fetchMock = renderPage(current, {
+      "GET /frames/ABCD-EFGH": () => json(current),
+      "DELETE /frames/ABCD-EFGH/positions/Right-B": () => {
+        current = frame({ positions: current.positions.slice(0, 1), version: 5 });
+        return json(current);
+      },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Remove CuO from Right-B" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Remove CuO from Right-B" })).not.toBeInTheDocument(),
+    );
+    const request = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "DELETE")!;
+    const url = new URL(request.url);
+    expect(url.pathname).toMatch(/\/frames\/ABCD-EFGH\/positions\/Right-B$/);
+    expect(url.searchParams.get("version")).toBe("4");
+  });
+
   it("asks before a plate change removes samples", async () => {
     const fetchMock = renderPage(frame(), {
       "PUT /frames/ABCD-EFGH/plates": () =>
@@ -127,5 +147,6 @@ describe("FrameConfigPage", () => {
     expect(screen.getByRole("button", { name: "Left-B: empty" })).toBeDisabled();
     expect(screen.getByRole("combobox", { name: "Left" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: /Note/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
   });
 });
