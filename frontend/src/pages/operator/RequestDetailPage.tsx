@@ -14,6 +14,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 
@@ -146,24 +147,31 @@ function IssuePanel({ request }: { request: MaterialRequest }) {
           <Table>
             <Table.Tbody>
               {scanned.map((row) => (
-                <Table.Tr key={row.barcode} bg={row.status === "error" ? "red.1" : undefined}>
+                <Table.Tr
+                  key={row.barcode}
+                  bg={row.status === "error" ? "var(--mantine-color-red-light)" : undefined}
+                >
                   <Table.Td ff="monospace">{row.barcode}</Table.Td>
                   <Table.Td>
-                    <Badge
-                      variant="light"
-                      color={row.status === "ok" ? "green" : row.status === "error" ? "red" : "gray"}
-                    >
-                      {row.message}
-                    </Badge>
+                    {row.status === "error" ? (
+                      <Text size="sm" c="red" fw={500}>
+                        {row.message}
+                      </Text>
+                    ) : (
+                      <Badge variant="light" color={row.status === "ok" ? "green" : "gray"}>
+                        {row.message}
+                      </Badge>
+                    )}
                   </Table.Td>
                   <Table.Td w={40}>
                     <ActionIcon
                       variant="subtle"
                       color="gray"
+                      size="sm"
                       aria-label={`Remove ${row.barcode}`}
                       onClick={() => setScanned((rows) => rows.filter((r) => r !== row))}
                     >
-                      ✕
+                      <IconX size={14} />
                     </ActionIcon>
                   </Table.Td>
                 </Table.Tr>

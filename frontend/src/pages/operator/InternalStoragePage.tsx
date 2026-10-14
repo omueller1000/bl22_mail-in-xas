@@ -33,7 +33,7 @@ import {
 import { PageLoader } from "../../auth/guards";
 import { ScanInput } from "../../components/ScanInput";
 import { YesNoIcon } from "../../components/YesNoIcon";
-import { FRAME_STATE_LABELS, formatDateTime } from "../../materials/labels";
+import { FRAME_STATE_LABELS, formatDateTime, IN_PROGRESS_COLOR } from "../../materials/labels";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
 
 const CONTAINERS = [0, 1, 2];
@@ -223,7 +223,7 @@ function OccupancyGrid({
                   ? "var(--mantine-color-orange-light)"
                   : frame
                     ? atBeamline
-                      ? "var(--mantine-color-yellow-light)"
+                      ? `var(--mantine-color-${IN_PROGRESS_COLOR}-light)`
                       : "var(--mantine-primary-color-light)"
                     : undefined,
                 border: "1px solid var(--mantine-color-default-border)",

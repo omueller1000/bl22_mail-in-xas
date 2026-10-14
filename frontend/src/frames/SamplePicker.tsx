@@ -3,10 +3,10 @@ import { IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 
 import type { Sample } from "../api/client";
-import { formatDate } from "../materials/labels";
+import { formatDate, IN_PROGRESS_COLOR } from "../materials/labels";
 
-// Same colour as the "Being prepared" status badge (yellow, light variant).
-const PLACED_COLOR = "var(--mantine-color-yellow-light-color)";
+// "In progress" colour (as the "Being prepared" badge), light variant.
+const PLACED_COLOR = `var(--mantine-color-${IN_PROGRESS_COLOR}-light-color)`;
 
 // Room for 10 rows plus the header before the table scrolls.
 const ROW_HEIGHT = 37;
