@@ -81,17 +81,8 @@ def test_raw_xdi() -> None:
     assert lines[-3:] == ["# energy  i0", "5400  1", "5401  2"]
 
 
-def test_zip_contains_raw_and_processed_files() -> None:
-    processed = {
-        "metadata": {"e0": 5465.0},
-        "mu": {"x": [5400.0], "y": [0.1]},
-        "chi": None,
-        "uploaded_at": datetime(2026, 10, 2, tzinfo=UTC),
-    }
+def test_zip_of_a_sweep_that_cannot_be_processed() -> None:
     archive = export.FrameZip()
-    archive.add_sweep(SWEEP, processed, "V2O5")
+    archive.add_sweep(SWEEP, "V2O5")  # two points and no i1: raw data only
     names = zipfile.ZipFile(io.BytesIO(archive.close())).namelist()
-    assert names == [
-        "Left-G_V2O5/AAAA-AABC_7_Left-G_V_K_EXAFS_1_002.xdi",
-        "Left-G_V2O5/AAAA-AABC_7_Left-G_V_K_EXAFS_1_002_proc_mu.xdi",
-    ]
+    assert names == ["Left-G_V2O5/AAAA-AABC_7_Left-G_V_K_EXAFS_1_002.xdi"]

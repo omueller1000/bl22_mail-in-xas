@@ -1,4 +1,4 @@
-"""Measured data (requirements §11): raw sweeps and their processed results."""
+"""Measured data (requirements §11): raw sweeps. Processing is computed on request."""
 
 from datetime import datetime
 from typing import Annotated, Any, Self
@@ -46,32 +46,6 @@ class SweepUpload(BaseModel):
         return self
 
 
-class Curve(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    x: list[float] = Field(min_length=1)
-    y: list[float] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def _check(self) -> Self:
-        if len(self.x) != len(self.y):
-            raise ValueError("x and y must have the same length")
-        return self
-
-
-class ProcessedUpload(BaseModel):
-    """Processed result of one sweep; uploading again replaces the previous version."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    # E0, processing parameters, ...
-    metadata: dict[str, Any] = {}
-    # mu(E): x = energy (eV), y = mu
-    mu: Curve
-    # k^2-weighted chi(k): x = k (1/Å), y = k^2 chi; not every measurement has one (e.g. XANES)
-    chi: Curve | None = None
-
-
 class Measured(BaseModel):
     """What was actually measured: the measurement's settings when the sweep was uploaded."""
 
@@ -96,10 +70,9 @@ class SweepInfo(BaseModel):
     # Derived spectra that can be computed from the channels (§11.3).
     spectra: list[str]
     uploaded_at: datetime
-    has_processed: bool
 
 
-def sweep_info(doc: dict[str, Any], has_processed: bool) -> SweepInfo:
+def sweep_info(doc: dict[str, Any]) -> SweepInfo:
     """From a sweep document with its channels, or with `channel_names` and `points` instead."""
     if "channel_names" in doc:
         names, points = doc["channel_names"], doc["points"]
@@ -119,5 +92,4 @@ def sweep_info(doc: dict[str, Any], has_processed: bool) -> SweepInfo:
         channels=names,
         spectra=spectra.available(names),
         uploaded_at=doc["uploaded_at"],
-        has_processed=has_processed,
     )

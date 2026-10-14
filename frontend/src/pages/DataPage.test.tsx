@@ -59,14 +59,38 @@ function sweep(sweepNo: number, batch = 1, overrides: Partial<SweepInfo> = {}): 
     channels: ["energy", "i0", "i1"],
     spectra: ["sample_trans"],
     uploaded_at: "2026-10-13T00:00:00Z",
-    has_processed: false,
     ...overrides,
   };
 }
 
 const CURVE = { x: [1, 2, 3], y: [0.1, 0.2, 0.3] };
 
-function renderPage(sweeps: SweepInfo[], route = "/frames/ABCD-EFGH/data") {
+function processedResult(sweeps: number[], problems: string[] = []) {
+  return {
+    spectrum: "sample_trans",
+    sweeps,
+    element: "Cu",
+    edge: "K",
+    e0: 8979,
+    e0_source: "X-Ray Data Booklet",
+    edge_step: problems.length ? null : 0.52,
+    mu: CURVE,
+    pre_edge: CURVE,
+    post_edge: CURVE,
+    background: CURVE,
+    chi: problems.length ? null : CURVE,
+    ft_window: problems.length ? null : { x: [1, 2, 3], y: [0, 1, 0] },
+    chir: problems.length ? null : { r: [1, 2], magnitude: [1, 2], real: [1, 2], imaginary: [1, 2] },
+    parameters: { pre_order: 2, post_order: 3, rbkg: 1 },
+    problems,
+  };
+}
+
+function renderPage(
+  sweeps: SweepInfo[],
+  route = "/frames/ABCD-EFGH/data",
+  processingProblems: string[] = [],
+) {
   const fetchMock = mockApi({
     "GET /frames/ABCD-EFGH": () => json(FRAME),
     "GET /frames/ABCD-EFGH/sweeps": () => json(sweeps),
@@ -76,11 +100,15 @@ function renderPage(sweeps: SweepInfo[], route = "/frames/ABCD-EFGH/data") {
         [`GET /sweeps/${s.id}/curve`, () => json(CURVE)],
         [
           `GET /sweeps/${s.id}`,
-          () => json({ sweep: s, metadata: { lattice_spacing: 1.92 }, processed: null }),
+          () => json({ sweep: s, metadata: { lattice_spacing: 1.92 } }),
         ],
       ]),
     ),
     "GET /measurements/m1/batches/1/merge": () => json(CURVE),
+    "GET /measurements/m1/batches/1/process": (request) => {
+      const numbers = new URL(request.url).searchParams.getAll("sweeps").map(Number);
+      return json(processedResult(numbers, processingProblems));
+    },
   });
   renderWithProviders(
     <Routes>
@@ -159,19 +187,54 @@ describe("DataPage", () => {
     expect(requested(fetchMock)).toContain("/sweeps/sw2/curve?view=spectrum&name=sample_trans");
   });
 
-  it("offers processed views only when there is processed data", async () => {
-    renderPage([sweep(1)]);
-    await screen.findByTestId("chart");
-    expect(screen.getByText(/appear once the sweeps are processed/)).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "χ(k)" })).toBeDisabled();
+  it("plots mu(E) with the fitted functions of the checked sweep", async () => {
+    const fetchMock = renderPage([sweep(1), sweep(2)]);
+    const user = userEvent.setup();
+    await screen.findByText(/Sweep 1, Sweep 2/);
+    await user.click(screen.getByRole("checkbox", { name: "Sweep 2" }));
+    await user.click(screen.getByRole("radio", { name: "μ(E)" }));
+
+    expect(
+      await screen.findByText("μ(E): μ(E), Pre-edge, Post-edge, Background"),
+    ).toBeInTheDocument();
+    expect(requested(fetchMock)).toContain(
+      "/measurements/m1/batches/1/process?spectrum=sample_trans&sweeps=1",
+    );
+    expect(screen.getByText("Processing sweep 1.")).toBeInTheDocument();
+    expect(screen.getByText(/8979 \(Cu K/)).toBeInTheDocument(); // E0 in the processing card
+    expect(screen.queryByRole("checkbox", { name: "Background" })).not.toBeInTheDocument();
   });
 
-  it("plots processed chi(k)", async () => {
-    const fetchMock = renderPage([sweep(1, 1, { has_processed: true })]);
+  it("processes the merge when several sweeps are checked", async () => {
+    const fetchMock = renderPage([sweep(1), sweep(2), sweep(3)]);
+    const user = userEvent.setup();
+    await screen.findByText(/Sweep 1, Sweep 2, Sweep 3/);
+    await user.click(screen.getByRole("radio", { name: "χ(R)" }));
+
+    expect(await screen.findByText(/: \|χ\(R\)\|$/)).toBeInTheDocument();
+    expect(requested(fetchMock)).toContain(
+      "/measurements/m1/batches/1/process?spectrum=sample_trans&sweeps=1&sweeps=2&sweeps=3",
+    );
+    expect(screen.getByText("Processing the merge of sweeps 1, 2, 3.")).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Merge/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Imaginary part" }));
+    expect(await screen.findByText(/\|χ\(R\)\|, Im χ\(R\)$/)).toBeInTheDocument();
+  });
+
+  it("shows the FT window with chi(k)", async () => {
+    renderPage([sweep(1)]);
     const user = userEvent.setup();
     await screen.findByTestId("chart");
     await user.click(screen.getByRole("radio", { name: "χ(k)" }));
-    await waitFor(() => expect(screen.getByTestId("chart")).toHaveTextContent("k²χ(k)"));
-    expect(requested(fetchMock)).toContain("/sweeps/sw1/curve?view=chi");
+    expect(await screen.findByText(/: k²χ\(k\), FT window$/)).toBeInTheDocument();
+  });
+
+  it("explains why processing is incomplete", async () => {
+    renderPage([sweep(1)], undefined, ["The post-edge range contains 0 point(s)."]);
+    const user = userEvent.setup();
+    await screen.findByTestId("chart");
+    await user.click(screen.getByRole("radio", { name: "χ(k)" }));
+    expect(await screen.findByText(/post-edge range contains 0 point/)).toBeInTheDocument();
   });
 });

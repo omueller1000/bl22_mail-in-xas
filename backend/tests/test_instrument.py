@@ -284,31 +284,6 @@ async def test_data_protects_sample_and_measurement(
     assert measurement["executed"] is True
 
 
-async def test_processed_data_replaces_previous(
-    client: AsyncClient, raw_db: Any, instrument: AsyncClient
-) -> None:
-    ready = await ready_frame(client, raw_db)
-    base = f"{API}/instrument/measurements/{ready['measurement']}/sweeps"
-    processed = {
-        "metadata": {"e0": 8979.0},
-        "mu": {"x": [8900.0, 8901.0], "y": [0.1, 0.2]},
-        "chi": {"x": [2.0, 2.1], "y": [0.01, 0.02]},
-    }
-    assert (await instrument.put(f"{base}/1/1/processed", json=processed)).status_code == 404
-
-    await instrument.post(base, json=sweep())
-    first = await instrument.put(f"{base}/1/1/processed", json=processed)
-    assert first.status_code == 200 and first.json()["has_processed"] is True
-    replaced = {**processed, "metadata": {"e0": 8980.0}}
-    await instrument.put(f"{base}/1/1/processed", json=replaced)
-
-    docs = await raw_db.processed.find({"frame": ready["code"]}).to_list()
-    assert len(docs) == 1 and docs[0]["metadata"]["e0"] == 8980.0
-
-    bad = {**processed, "mu": {"x": [1.0, 2.0], "y": [1.0]}}
-    assert (await instrument.put(f"{base}/1/1/processed", json=bad)).status_code == 422
-
-
 async def test_oversized_requests_are_refused(client: AsyncClient, instrument: AsyncClient) -> None:
     response = await instrument.post(
         f"{API}/instrument/measurements/000000000000000000000000/sweeps",

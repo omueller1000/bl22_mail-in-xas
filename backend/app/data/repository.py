@@ -3,13 +3,11 @@
 sweeps:    {_id, measurement_id, frame, position, number, sample_id, owner_id,
             batch_no, sweep_no, measured: {technique, element, edge, detection, beam},
             metadata, channels: [{name, unit, values}], uploaded_at, uploaded_by}
-processed: {_id, sweep_id, measurement_id, frame, batch_no, sweep_no, metadata,
-            mu: {x, y}, chi: {x, y} | None, uploaded_at, uploaded_by}
 
 The backend copies frame, position, sample and owner from the measurement when a sweep is
 uploaded (they are never taken from the uploader), and snapshots the measurement's settings,
 so the data keeps saying what was measured even if the measurement is edited later.
-Raw sweeps are never changed or deleted; processed results are replaced on re-upload.
+Raw sweeps are never changed or deleted. Processing is computed on request (app.processing).
 """
 
 from bson import ObjectId
@@ -18,7 +16,6 @@ from pymongo import ASCENDING
 from app.db import Database
 
 SWEEPS = "sweeps"
-PROCESSED = "processed"
 
 
 async def ensure_indexes(db: Database) -> None:
@@ -33,8 +30,6 @@ async def ensure_indexes(db: Database) -> None:
     await db[SWEEPS].create_index([("frame", ASCENDING)])
     await db[SWEEPS].create_index([("sample_id", ASCENDING)])
     await db[SWEEPS].create_index([("owner_id", ASCENDING)])
-    await db[PROCESSED].create_index([("sweep_id", ASCENDING)], unique=True)
-    await db[PROCESSED].create_index([("measurement_id", ASCENDING)])
 
 
 async def last_numbers(

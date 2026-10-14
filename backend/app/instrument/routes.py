@@ -2,7 +2,7 @@
 
 Authenticated with an API key (app.instrument.keys); only reachable on the internal network
 (the public proxy blocks /api/instrument/). The control software reads what to measure,
-reports frame and measurement progress, and uploads raw and processed data.
+reports frame and measurement progress, and uploads raw data (the portal processes it).
 """
 
 from datetime import UTC, datetime
@@ -15,7 +15,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.auth.dependencies import Db
 from app.data import repository as data
-from app.data.models import ProcessedUpload, SweepInfo, SweepUpload, sweep_info
+from app.data.models import SweepInfo, SweepUpload, sweep_info
 from app.frames import repository as frames
 from app.frames.models import StorageLocation
 from app.frames.states import FrameState
@@ -317,42 +317,7 @@ async def upload_sweep(
     await db[measurements.COLLECTION].update_one(
         {"_id": measurement["_id"]}, {"$set": {"executed": True}}
     )
-    return sweep_info(doc, has_processed=False)
-
-
-@router.put("/measurements/{measurement_id}/sweeps/{batch_no}/{sweep_no}/processed")
-async def upload_processed(
-    measurement_id: str,
-    batch_no: int,
-    sweep_no: int,
-    body: ProcessedUpload,
-    client: Instrument,
-    db: Db,
-) -> SweepInfo:
-    """Store (or replace) the processed result of an uploaded sweep."""
-    measurement = await _load_measurement(db, measurement_id)
-    sweep = await db[data.SWEEPS].find_one(
-        {"measurement_id": measurement["_id"], "batch_no": batch_no, "sweep_no": sweep_no},
-    )
-    if sweep is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload the raw sweep first")
-    await db[data.PROCESSED].replace_one(
-        {"sweep_id": sweep["_id"]},
-        {
-            "sweep_id": sweep["_id"],
-            "measurement_id": measurement["_id"],
-            "frame": sweep["frame"],
-            "batch_no": batch_no,
-            "sweep_no": sweep_no,
-            "metadata": body.metadata,
-            "mu": body.mu.model_dump(),
-            "chi": body.chi.model_dump() if body.chi else None,
-            "uploaded_at": datetime.now(UTC),
-            "uploaded_by": client_actor(client),
-        },
-        upsert=True,
-    )
-    return sweep_info(sweep, has_processed=True)
+    return sweep_info(doc)
 
 
 # --- helpers ---------------------------------------------------------------------------------

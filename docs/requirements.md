@@ -16,7 +16,7 @@ A web portal for the BL22 high-throughput XAS mail-in program. It lets users:
 3. define XAS measurements per sample position,
 4. inspect and download their data.
 
-It lets beamline staff track frames through shipping, receiving and storage by barcode scanning, and it is the **input to the beamline's automated measurement queue**: the beamline control software reads measurement definitions from the portal's backend and uploads raw and processed data to it.
+It lets beamline staff track frames through shipping, receiving and storage by barcode scanning, and it is the **input to the beamline's automated measurement queue**: the beamline control software reads measurement definitions from the portal's backend and uploads raw data to it; the portal processes the data itself.
 
 **Out of scope for this version:** data sharing between users, email notifications, audit trail, courier tracking, packing lists/labels, imaging measurements, user deactivation, editable plate-type catalog, internal TLS.
 
@@ -387,7 +387,7 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Scanning | `POST /scans/validate` (codes + action → per-code result), `POST /scans/apply` (codes + action), `POST /frames/{barcode}/internal-storage` (container, slot) | Operator |
 | Storage | `GET /storage/internal` | Operator |
 | Warnings | `GET /warnings` (own; all for Operator) | User / Operator |
-| Data | `GET /frames/{barcode}/sweeps` (all sweeps without values: measurement, batch, sweep, what was measured, channels, available spectra, has processed), `GET /sweeps/{id}` (metadata incl. processing metadata), `GET /sweeps/{id}/curve?view=raw\|spectrum\|mu\|chi&name=…`, `GET /measurements/{id}/batches/{batch}/merge?view=…&name=…&sweeps=…` | owner / Operator |
+| Data | `GET /frames/{barcode}/sweeps` (all sweeps without values: measurement, batch, sweep, what was measured, channels, available spectra), `GET /sweeps/{id}` (metadata), `GET /sweeps/{id}/curve?view=raw\|spectrum&name=…`, `GET /measurements/{id}/batches/{batch}/merge?view=…&name=…&sweeps=…`, `GET /measurements/{id}/batches/{batch}/process?spectrum=…&sweeps=…` (§11.2) | owner / Operator |
 | Export | `GET /frames/{barcode}/export.zip` | owner / Operator |
 
 ### 10.2 Instrument API (API key, internal network only)
@@ -400,7 +400,6 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Change frame state (`scheduled`, `loaded`, back to `internal_storage`) | `POST /instrument/frames/{barcode}/state` |
 | Set measurement status (`pending`, `done`, `error` + message) | `PUT /instrument/measurements/{id}/status` |
 | Upload raw sweep data | `POST /instrument/measurements/{id}/sweeps` |
-| Upload / replace processed data of a sweep | `PUT /instrument/measurements/{id}/sweeps/{batch}/{sweep}/processed` |
 
 Upload rules:
 - The control software sends `batch_no` and `sweep_no` with each raw upload; it chooses them (the frame endpoint reports each measurement's last batch and sweep). A **re-measure** sets the status back to `pending` (API only for now); the re-run then uses the next batch number and continues the sweep numbers.
@@ -410,7 +409,7 @@ Upload rules:
 - Requests are limited to 12 MB (a sweep is typically ~1 MB, at most ~5 MB).
 - Batches may contain different numbers of sweeps.
 - Raw data is immutable: no endpoint updates or deletes it.
-- Processed data for a sweep can be re-uploaded at any time and **replaces** the previous version.
+- The control software uploads raw data only; processing is done by the portal (§11.2).
 
 ---
 
@@ -436,14 +435,20 @@ The channel set is not fixed; the backend stores whatever named channels are sen
 
 All analog channels are always recorded, even when they carry no meaningful signal (e.g. `fy` in transmission mode when the photodiode is not deployed, or `i1`/`i2` in fluorescence mode on a thick sample). The data viewer pre-selects the spectrum that matches the detection mode (transmission → `sample_trans`, TFY → `fy_norm`, SDD → `sdd_roi1`) but lets the user plot any channel.
 
-### 11.2 Processed sweep record
+### 11.2 Processing (computed by the portal on request, not stored)
 
-- Keys: measurement, batch_no, sweep_no.
-- μ(E): energy + μ (raw, not normalized).
-- χ(k): k + χ, **k²-weighted** (fixed).
-- Metadata: E0 and all processing parameters; shown in the portal.
+- **Input:** the spectrum selected in the viewer (§11.3; by default the one matching the detection mode) of the checked sweeps of one batch. One sweep is processed as is; **several are merged first** and the merge is processed.
+- **Steps:**
+  1. **E0** from the X-Ray Data Booklet table (https://xdb.lbl.gov) for the measurement's element and edge (not derived from the data; energy alignment comes later).
+  2. **Normalisation:** pre-edge quadratic polynomial from 10 eV after the start of the spectrum to 40 eV below E0; post-edge cubic polynomial from 150 eV above E0 to 10 eV before the end; edge step = post-edge minus pre-edge at E0.
+  3. **Background removal** (AUTOBK-like): a cubic spline in k whose coefficients minimise the Fourier components of χ below R_bkg = 1 Å.
+  4. **χ(k)**, shown k²-weighted.
+  5. **Fourier transform** χ(R) (magnitude, real and imaginary part) with a Hanning window: k from 2 Å⁻¹ to 1 Å⁻¹ before the end of the data, taper dk = 1 Å⁻¹, R up to 6 Å.
+- **Parameters** are automatic for now and collected in one class in the code (`backend/app/processing/parameters.py`), so they are easy to change. They are shown with every result and written into exported files.
+- If a step is not possible (e.g. a XANES scan has no post-edge or EXAFS region), the steps before it are still shown, with the reason.
+- Dead-time: SDD data is assumed to be dead-time corrected already (open item 3).
 
-### 11.3 Derived views (computed on request by the backend, not stored)
+### 11.3 Derived spectra (computed on request by the backend, not stored)
 
 | Spectrum | Formula |
 |---|---|
@@ -453,7 +458,7 @@ All analog channels are always recorded, even when they carry no meaningful sign
 | `sdd_roi1` | Σₙ roi1_n / i0 |
 | `sdd_roi2` | Σₙ roi2_n / i0 |
 
-- **Merge:** within **one batch** only, over the sweeps the user selects. Sweeps are interpolated onto a common energy (or k) grid and averaged. Applies to derived spectra and processed μ(E) / χ(k). Merged data is neither stored nor exported.
+- **Merge:** within **one batch** only, over the sweeps the user selects (or all sweeps of the batch). Sweeps are linearly interpolated onto the first selected sweep's energy grid, within the range all of them cover, and averaged. Merged data is neither stored nor exported.
 
 ### 11.4 Data viewer (user)
 
@@ -461,9 +466,12 @@ All analog channels are always recorded, even when they carry no meaningful sign
 2. Choose view:
    - **Raw signals:** any individual channel (e.g. `i0`, `i1`, `fy`, `roi1_3`) vs energy,
    - **Spectra:** derived spectra (§11.3),
-   - **μ(E)** and **χ(k)** from processed data.
-3. All sweeps of the selected measurement/batch are overlaid; sweeps can be toggled; the merged curve of the selected sweeps can be shown.
-4. Metadata (incl. E0 and processing parameters) is shown alongside.
+   - **μ(E)** (raw, not normalised) with the pre-edge, post-edge and background curves, each can be shown or hidden,
+   - **χ(k)** (k²-weighted),
+   - **χ(R)**: magnitude, optionally real and imaginary part.
+3. Spectra and raw signals: all sweeps of the selected measurement/batch are overlaid; sweeps can be toggled; the merge of all sweeps and the merge of the checked sweeps can be shown.
+4. μ(E), χ(k), χ(R): the processing (§11.2) of the checked sweep, or of the merge of the checked sweeps.
+5. Metadata of each sweep, and E0, edge step and processing parameters, are shown alongside.
 
 Overlay across different measurements or positions is not required.
 
@@ -475,9 +483,11 @@ Overlay across different measurements or positions is not required.
 - File name: `<Barcode>_<MeasNo>_<Location>_<Element>_<Edge>_<Type>_<BatchNo>_<SweepNo>.xdi`
   - MeasNo and BatchNo without leading zeros; SweepNo 3 digits zero-padded.
   - Example raw: `AAAA-AABC_7_Left-G_V_K_EXAFS_1_002.xdi`
-  - Processed: two files per sweep, since μ(E) and χ(k) have different x-axes:
-    - `AAAA-AABC_7_Left-G_V_K_EXAFS_1_002_proc_mu.xdi` (energy, μ)
+  - Processed (§11.2, computed at export time for each sweep's default spectrum): up to three files per sweep, since the x-axes differ:
+    - `AAAA-AABC_7_Left-G_V_K_EXAFS_1_002_proc_mu.xdi` (energy, μ, pre-edge, post-edge, background)
     - `AAAA-AABC_7_Left-G_V_K_EXAFS_1_002_proc_chi.xdi` (k, k²χ)
+    - `AAAA-AABC_7_Left-G_V_K_EXAFS_1_002_proc_chir.xdi` (R, |χ(R)|, Re, Im)
+  - Steps that are not possible for a sweep are left out (no processed files at all if not even the normalisation works).
 - Example: Left-A has Cu K EXAFS (transmission); Left-B has Cu K EXAFS (transmission) and Cu K EXAFS (SDD). Left-B's SDD measurement is re-measured, giving batch 2. Files:
   ```
   Left-A_<sample>/AAAA-AABC_1_Left-A_Cu_K_EXAFS_1_001.xdi
@@ -486,7 +496,7 @@ Overlay across different measurements or positions is not required.
   Left-B_<sample>/AAAA-AABC_2_Left-B_Cu_K_EXAFS_1_002.xdi
   Left-B_<sample>/AAAA-AABC_2_Left-B_Cu_K_EXAFS_2_003.xdi   ← batch 2, sweep numbering continues
   ```
-- Contains raw and processed data for every sweep; no merged data.
+- Contains raw and processed data for every sweep; no merged data. E0, edge step and all processing parameters are in the headers of the processed files.
 
 ### 11.6 Storage notes
 
@@ -527,7 +537,8 @@ Overlay across different measurements or positions is not required.
 | 2 | MongoDB backups: who, how often, where. | TBD |
 | 3 | SDD dead-time: are ROI rates already dead-time corrected? If not, correction formula using OCR/LiveTime. | Open |
 | 4 | Email notifications (events, recipients, templates). | Later |
-| 5 | Processed XDI files: two files `…_proc_mu.xdi` and `…_proc_chi.xdi` (§11.5). | Decided |
+| 5 | Processed XDI files: `…_proc_mu.xdi`, `…_proc_chi.xdi` and `…_proc_chir.xdi` (§11.5). | Decided |
+| 10 | Energy alignment (e.g. to the reference ln(i1/i2)) and user-adjustable processing parameters. | Later |
 | 6 | Element/edge restriction to beamline energy range. | Later |
 | 7 | Plate-type catalog editing UI. | Later |
 | 8 | Internal TLS. | Later |

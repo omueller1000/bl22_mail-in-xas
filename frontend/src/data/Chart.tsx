@@ -8,6 +8,7 @@ export interface Trace {
   /** Drawn thicker and on top, e.g. the merged curve. */
   emphasis?: boolean;
   dashed?: boolean;
+  color?: string;
 }
 
 interface ChartProps {
@@ -47,6 +48,7 @@ export function Chart({ traces, xLabel, yLabel, height = 460 }: ChartProps) {
             width: t.emphasis ? 3 : 1.2,
             ...(t.emphasis && { color: dark ? "#ffffff" : "#000000" }),
             ...(t.dashed && { dash: "dash" }),
+            ...(t.color && { color: t.color }),
           },
         })),
         {

@@ -767,26 +767,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/instrument/measurements/{measurement_id}/sweeps/{batch_no}/{sweep_no}/processed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Upload Processed
-         * @description Store (or replace) the processed result of an uploaded sweep.
-         */
-        put: operations["upload_processed"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/material-requests": {
         parameters: {
             query?: never;
@@ -978,7 +958,7 @@ export interface paths {
         };
         /**
          * Get Sweep
-         * @description A sweep's metadata and, if processed, the processing metadata (E0, parameters, ...).
+         * @description A sweep's metadata (as uploaded by the control software).
          */
         get: operations["get_sweep"];
         put?: never;
@@ -998,7 +978,7 @@ export interface paths {
         };
         /**
          * Get Sweep Curve
-         * @description One curve of a sweep: a raw channel or derived spectrum vs energy, or processed data.
+         * @description One curve of a sweep: a raw channel or a derived spectrum vs energy.
          */
         get: operations["get_sweep_curve"];
         put?: never;
@@ -1029,6 +1009,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/measurements/{measurement_id}/batches/{batch_no}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Process Sweeps
+         * @description Normalisation, background, chi(k) and chi(R) of a spectrum; with several sweeps, of
+         *     their merge. Computed on request with automatic parameters, not stored.
+         */
+        get: operations["process_sweeps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/frames/{barcode}/export.zip": {
         parameters: {
             query?: never;
@@ -1038,7 +1039,7 @@ export interface paths {
         };
         /**
          * Export Frame
-         * @description All raw and processed sweeps of a frame as XDI files in one ZIP (§11.5).
+         * @description All sweeps of a frame as XDI files in one ZIP, raw and processed (§11.5).
          */
         get: operations["export_frame"];
         put?: never;
@@ -1135,17 +1136,21 @@ export interface components {
             /** Values */
             values: number[];
         };
+        /** ChiR */
+        ChiR: {
+            /** R */
+            r: (number | null)[];
+            /** Magnitude */
+            magnitude: (number | null)[];
+            /** Real */
+            real: (number | null)[];
+            /** Imaginary */
+            imaginary: (number | null)[];
+        };
         /** ClientCreate */
         ClientCreate: {
             /** Name */
             name: string;
-        };
-        /** Curve */
-        Curve: {
-            /** X */
-            x: number[];
-            /** Y */
-            y: number[];
         };
         /** DeclareSafe */
         DeclareSafe: {
@@ -1548,34 +1553,38 @@ export interface components {
             /** Sample Id */
             sample_id: string;
         };
-        /** ProcessedInfo */
-        ProcessedInfo: {
-            /** Metadata */
-            metadata: {
-                [key: string]: unknown;
-            };
-            /** Has Chi */
-            has_chi: boolean;
-            /**
-             * Uploaded At
-             * Format: date-time
-             */
-            uploaded_at: string;
-        };
         /**
-         * ProcessedUpload
-         * @description Processed result of one sweep; uploading again replaces the previous version.
+         * ProcessedSpectrum
+         * @description Processing of one input: a sweep's spectrum, or the merge of several sweeps (§11.3).
          */
-        ProcessedUpload: {
-            /**
-             * Metadata
-             * @default {}
-             */
-            metadata: {
+        ProcessedSpectrum: {
+            /** Spectrum */
+            spectrum: string;
+            /** Sweeps */
+            sweeps: number[];
+            /** Element */
+            element: string;
+            /** Edge */
+            edge: string;
+            /** E0 */
+            e0: number;
+            /** E0 Source */
+            e0_source: string;
+            /** Edge Step */
+            edge_step: number | null;
+            mu: components["schemas"]["PlotCurve"];
+            pre_edge: components["schemas"]["PlotCurve"] | null;
+            post_edge: components["schemas"]["PlotCurve"] | null;
+            background: components["schemas"]["PlotCurve"] | null;
+            chi: components["schemas"]["PlotCurve"] | null;
+            ft_window: components["schemas"]["PlotCurve"] | null;
+            chir: components["schemas"]["ChiR"] | null;
+            /** Parameters */
+            parameters: {
                 [key: string]: unknown;
             };
-            mu: components["schemas"]["Curve"];
-            chi?: components["schemas"]["Curve"] | null;
+            /** Problems */
+            problems: string[];
         };
         /**
          * Profile
@@ -1855,7 +1864,6 @@ export interface components {
             metadata: {
                 [key: string]: unknown;
             };
-            processed: components["schemas"]["ProcessedInfo"] | null;
         };
         /** SweepInfo */
         SweepInfo: {
@@ -1885,8 +1893,6 @@ export interface components {
              * Format: date-time
              */
             uploaded_at: string;
-            /** Has Processed */
-            has_processed: boolean;
         };
         /**
          * SweepUpload
@@ -1968,7 +1974,7 @@ export interface components {
          * View
          * @enum {string}
          */
-        View: "raw" | "spectrum" | "mu" | "chi";
+        View: "raw" | "spectrum";
         /**
          * WarningKind
          * @enum {string}
@@ -3391,45 +3397,6 @@ export interface operations {
             };
         };
     };
-    upload_processed: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                measurement_id: string;
-                batch_no: number;
-                sweep_no: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProcessedUpload"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SweepInfo"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_requests: {
         parameters: {
             query?: {
@@ -3953,7 +3920,7 @@ export interface operations {
         parameters: {
             query: {
                 view: components["schemas"]["View"];
-                name?: string | null;
+                name: string;
             };
             header?: never;
             path: {
@@ -3987,8 +3954,8 @@ export interface operations {
         parameters: {
             query: {
                 view: components["schemas"]["View"];
+                name: string;
                 sweeps: number[];
-                name?: string | null;
             };
             header?: never;
             path: {
@@ -4006,6 +3973,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlotCurve"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    process_sweeps: {
+        parameters: {
+            query: {
+                spectrum: string;
+                sweeps: number[];
+            };
+            header?: never;
+            path: {
+                measurement_id: string;
+                batch_no: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessedSpectrum"];
                 };
             };
             /** @description Validation Error */

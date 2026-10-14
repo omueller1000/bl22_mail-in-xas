@@ -1,4 +1,9 @@
-import type { DataView, SweepInfo } from "../api/client";
+import type { SweepInfo } from "../api/client";
+
+/** Data viewer views: measured curves, and the processing of the selected spectrum. */
+export type ViewKind = "spectrum" | "raw" | "mu" | "chi" | "chir";
+
+export const PROCESSED_VIEWS: ViewKind[] = ["mu", "chi", "chir"];
 
 /** Derived spectra (requirements §11.3). */
 export const SPECTRUM_LABELS: Record<string, string> = {
@@ -9,11 +14,12 @@ export const SPECTRUM_LABELS: Record<string, string> = {
   sdd_roi2: "SDD ROI 2 · Σ roi2/i0",
 };
 
-export const VIEW_LABELS: Record<DataView, string> = {
+export const VIEW_LABELS: Record<ViewKind, string> = {
   spectrum: "Spectra",
   raw: "Raw signals",
   mu: "μ(E)",
   chi: "χ(k)",
+  chir: "χ(R)",
 };
 
 /** The spectrum that matches the detection mode, if the data has it (§11.1). */
@@ -26,12 +32,14 @@ export function defaultSpectrum(sweep: SweepInfo): string | undefined {
   return sweep.spectra.includes(preferred) ? preferred : sweep.spectra[0];
 }
 
-export function axisLabels(view: DataView, name: string | undefined): [string, string] {
+export function axisLabels(view: ViewKind, name: string | undefined): [string, string] {
   switch (view) {
     case "mu":
       return ["Energy (eV)", "μ(E)"];
     case "chi":
       return ["k (Å⁻¹)", "k²χ(k) (Å⁻²)"];
+    case "chir":
+      return ["R (Å)", "χ(R) (Å⁻³)"];
     case "spectrum":
       return ["Energy (eV)", (name && SPECTRUM_LABELS[name]?.split(" · ")[1]) ?? name ?? ""];
     default:

@@ -9,14 +9,14 @@ import {
   unwrap,
 } from "./client";
 
-/** What to plot: a view, plus the channel or spectrum name for "raw" and "spectrum". */
+/** What to plot: a raw channel or a derived spectrum, by name. */
 export interface CurveSpec {
   view: DataView;
-  name?: string;
+  name: string;
 }
 
-// Raw data never changes; processed data can be replaced by the control software.
-const staleTime = (view: DataView) => (view === "raw" || view === "spectrum" ? Infinity : 60_000);
+// Raw data never changes, so neither do curves computed from it.
+const staleTime = Infinity;
 
 export function useFrameSweeps(barcode: string) {
   return useQuery({
@@ -59,7 +59,7 @@ export function useSweepCurves(sweeps: SweepInfo[], spec: CurveSpec | null) {
           }),
         ),
       enabled: Boolean(spec),
-      staleTime: spec ? staleTime(spec.view) : 0,
+      staleTime,
     })),
   });
 }
@@ -80,7 +80,30 @@ export function useMergedCurve(sweeps: SweepInfo[], spec: CurveSpec | null, enab
         }),
       ),
     enabled: enabled && Boolean(spec) && sweeps.length > 1,
-    staleTime: spec ? staleTime(spec.view) : 0,
+    staleTime,
+  });
+}
+
+/**
+ * Normalisation, background, chi(k) and chi(R) of a spectrum: of one sweep, or of the merge of
+ * several sweeps of one batch. Computed by the backend with automatic parameters.
+ */
+export function useProcessed(sweeps: SweepInfo[], spectrum: string | undefined) {
+  const first = sweeps[0];
+  const numbers = sweeps.map((s) => s.sweep_no);
+  return useQuery({
+    queryKey: ["data", "process", first?.measurement_id, first?.batch_no, numbers, spectrum],
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/measurements/{measurement_id}/batches/{batch_no}/process", {
+          params: {
+            path: { measurement_id: first!.measurement_id, batch_no: first!.batch_no },
+            query: { spectrum: spectrum!, sweeps: numbers },
+          },
+        }),
+      ),
+    enabled: Boolean(first && spectrum),
+    staleTime,
   });
 }
 

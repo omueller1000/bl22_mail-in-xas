@@ -88,3 +88,18 @@ def merge(curves: list[tuple[Array, Array]]) -> tuple[Array, Array]:
 def to_list(values: Array) -> list[float | None]:
     """JSON-safe values: NaN and infinity become null."""
     return [float(v) if np.isfinite(v) else None for v in values]
+
+
+# The spectrum that matches each detection mode (§11.1); the viewer opens on it and the export
+# processes it.
+_FOR_DETECTION = {
+    "transmission": "sample_trans",
+    "transmission_tfy": "fy_norm",
+    "transmission_sdd": "sdd_roi1",
+}
+
+
+def default_spectrum(detection: str, channel_names: list[str]) -> str | None:
+    names = available(channel_names)
+    preferred = _FOR_DETECTION.get(detection)
+    return preferred if preferred in names else (names[0] if names else None)

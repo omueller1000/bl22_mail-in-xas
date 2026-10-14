@@ -77,11 +77,9 @@ cd backend
 export HT_XAS_INSTRUMENT_KEY=htxas_...        # the key, shown once when created
 uv run python ../tools/fake_instrument.py queue
 uv run python ../tools/fake_instrument.py run ABCD-EFGH path/to/sweep-files
-uv run python ../tools/fake_instrument.py process ABCD-EFGH path/to/sweep-files  # processed data only
 ```
 
-`run` also uploads a crude processed μ(E) and k²χ(k) for each sweep, so the data viewer has
-something to show; it is a stand-in for testing, not a real EXAFS analysis.
+Only raw sweeps are uploaded; the portal does the processing (`backend/app/processing/`).
 
 Real measurement files for testing go into `testdata-private/` (git-ignored, never committed).
 
