@@ -333,7 +333,6 @@ async def upload_processed(
     measurement = await _load_measurement(db, measurement_id)
     sweep = await db[data.SWEEPS].find_one(
         {"measurement_id": measurement["_id"], "batch_no": batch_no, "sweep_no": sweep_no},
-        {"channels": 0},
     )
     if sweep is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload the raw sweep first")
@@ -353,7 +352,7 @@ async def upload_processed(
         },
         upsert=True,
     )
-    return sweep_info({**sweep, "channels": []}, has_processed=True)
+    return sweep_info(sweep, has_processed=True)
 
 
 # --- helpers ---------------------------------------------------------------------------------

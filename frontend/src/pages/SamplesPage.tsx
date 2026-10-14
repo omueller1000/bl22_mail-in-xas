@@ -21,6 +21,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconFileTypePdf, IconLock, IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import type { Sample } from "../api/client";
 import {
@@ -35,6 +36,7 @@ import {
   useUploadMsds,
 } from "../api/samples";
 import { PageLoader } from "../auth/guards";
+import { DataLink } from "../data/DataLink";
 import { formatDate } from "../materials/labels";
 
 /** The user's sample library (requirements §8.2). */
@@ -165,9 +167,18 @@ function SampleRow({ sample, onEdit }: { sample: Sample; onEdit: () => void }) {
         )}
       </Table.Td>
       <Table.Td>
-        <Text size="sm" ff="monospace">
-          {sample.frames.join(", ")}
-        </Text>
+        <Stack gap={2}>
+          {sample.frames.map((barcode) => (
+            <Group key={barcode} gap={4} wrap="nowrap">
+              <Anchor component={Link} to={`/frames/${barcode}`} size="sm" ff="monospace">
+                {barcode}
+              </Anchor>
+              {sample.data_frames.includes(barcode) && (
+                <DataLink barcode={barcode} sampleId={sample.id} />
+              )}
+            </Group>
+          ))}
+        </Stack>
       </Table.Td>
       <Table.Td>
         <Text size="sm">{formatDate(sample.created_at)}</Text>

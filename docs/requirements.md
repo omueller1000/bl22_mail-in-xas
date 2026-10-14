@@ -293,7 +293,8 @@ Similar to v1's *Create* page:
 
 - Owned by one user. Fields: name (not unique), free-text description, optional MSDS.
 - **MSDS:** PDF only, < 1 MB, at most one per sample. Upload, replace, download.
-- A sample can be placed in **several positions** (same or different frames). One position holds exactly one sample.
+- A sample can be placed on **several frames**, but **at most once per frame**. One position holds exactly one sample. Replicates of the same material on one frame are separate samples with their own names. The sample picker cannot choose a sample that already sits at another position of the frame; to move it, clear its position first.
+- The Samples page lists, per sample, the frames it is placed on (each linking to the frame) and, for frames with data of that sample, a link that opens the data viewer on the sample's position.
 - **Frozen:** a sample cannot be edited (name, description, MSDS) once it is placed on any frame that has been declared safe. It stays frozen permanently, also after the frame is returned. A frozen sample can still be placed on new frames.
 - **Archive:** the user can archive and un-archive a sample at any time. Archived samples are hidden from the sample picker and the default sample list; a "show archived" option lists them. Archiving changes nothing else.
 - **Delete (permanent):** allowed only if the sample has **no data** and every frame it is placed on is either
@@ -386,7 +387,7 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Scanning | `POST /scans/validate` (codes + action → per-code result), `POST /scans/apply` (codes + action), `POST /frames/{barcode}/internal-storage` (container, slot) | Operator |
 | Storage | `GET /storage/internal` | Operator |
 | Warnings | `GET /warnings` (own; all for Operator) | User / Operator |
-| Data | `GET /measurements/{id}/sweeps` (list: batch, sweep, time, has processed), `GET /sweeps/{id}/raw?channels=…`, `GET /sweeps/{id}/spectra?names=…`, `GET /sweeps/{id}/processed`, `GET /measurements/{id}/batches/{batch}/merge?sweeps=…&kind=…` | owner / Operator |
+| Data | `GET /frames/{barcode}/sweeps` (all sweeps without values: measurement, batch, sweep, what was measured, channels, available spectra, has processed), `GET /sweeps/{id}` (metadata incl. processing metadata), `GET /sweeps/{id}/curve?view=raw\|spectrum\|mu\|chi&name=…`, `GET /measurements/{id}/batches/{batch}/merge?view=…&name=…&sweeps=…` | owner / Operator |
 | Export | `GET /frames/{barcode}/export.zip` | owner / Operator |
 
 ### 10.2 Instrument API (API key, internal network only)

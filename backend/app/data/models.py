@@ -5,6 +5,9 @@ from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+from app.data import spectra
+from app.measurements.options import Beam, Detection, Edge, Technique
+
 MAX_NUMBER = 999  # batch and sweep numbers: 1-999
 
 ChannelName = Annotated[
@@ -69,6 +72,16 @@ class ProcessedUpload(BaseModel):
     chi: Curve | None = None
 
 
+class Measured(BaseModel):
+    """What was actually measured: the measurement's settings when the sweep was uploaded."""
+
+    technique: Technique
+    element: str
+    edge: Edge
+    detection: Detection
+    beam: Beam
+
+
 class SweepInfo(BaseModel):
     id: str
     measurement_id: str
@@ -77,13 +90,22 @@ class SweepInfo(BaseModel):
     number: int  # measurement number on the position
     batch_no: int
     sweep_no: int
+    measured: Measured
     points: int
     channels: list[str]
+    # Derived spectra that can be computed from the channels (§11.3).
+    spectra: list[str]
     uploaded_at: datetime
     has_processed: bool
 
 
 def sweep_info(doc: dict[str, Any], has_processed: bool) -> SweepInfo:
+    """From a sweep document with its channels, or with `channel_names` and `points` instead."""
+    if "channel_names" in doc:
+        names, points = doc["channel_names"], doc["points"]
+    else:
+        names = [c["name"] for c in doc["channels"]]
+        points = len(doc["channels"][0]["values"]) if doc["channels"] else 0
     return SweepInfo(
         id=str(doc["_id"]),
         measurement_id=str(doc["measurement_id"]),
@@ -92,8 +114,10 @@ def sweep_info(doc: dict[str, Any], has_processed: bool) -> SweepInfo:
         number=doc["number"],
         batch_no=doc["batch_no"],
         sweep_no=doc["sweep_no"],
-        points=len(doc["channels"][0]["values"]) if doc["channels"] else 0,
-        channels=[c["name"] for c in doc["channels"]],
+        measured=Measured(**doc["measured"]),
+        points=points,
+        channels=names,
+        spectra=spectra.available(names),
         uploaded_at=doc["uploaded_at"],
         has_processed=has_processed,
     )

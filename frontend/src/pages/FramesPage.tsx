@@ -1,8 +1,9 @@
-import { Alert, Anchor, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 
 import { useFrames, usePlateTypes } from "../api/materials";
 import { PageLoader } from "../auth/guards";
+import { DataLink } from "../data/DataLink";
 import { plateSummary } from "../frames/summary";
 import { FrameStateBadge } from "../frames/FrameStateBadge";
 
@@ -42,9 +43,12 @@ export function FramesPage() {
               {frames.map((frame) => (
                 <Table.Tr key={frame.barcode}>
                   <Table.Td>
-                    <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
-                      {frame.barcode}
-                    </Anchor>
+                    <Group gap={6} wrap="nowrap">
+                      <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
+                        {frame.barcode}
+                      </Anchor>
+                      {frame.has_data && <DataLink barcode={frame.barcode} />}
+                    </Group>
                   </Table.Td>
                   <Table.Td>
                     <FrameStateBadge state={frame.state} />

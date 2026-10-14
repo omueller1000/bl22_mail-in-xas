@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from app.data import repository as data
 from app.db import Database
 from app.frames.configuration import missing_for_declaration
 from app.frames.models import Frame, to_model
@@ -17,13 +18,16 @@ async def frame_models(db: Database, docs: list[dict[str, Any]]) -> list[Frame]:
         s["_id"]: s["name"]
         async for s in db[samples.COLLECTION].find({"_id": {"$in": list(sample_ids)}}, {"name": 1})
     }
-    counts = await measurements.counts_by_position(db, [d["_id"] for d in docs])
+    barcodes = [d["_id"] for d in docs]
+    counts = await measurements.counts_by_position(db, barcodes)
+    with_data = await data.frames_having_data(db, barcodes)
     return [
         to_model(
             doc,
             owners.get(doc.get("owner_id")),
             names,
             missing_for_declaration(doc, counts.get(doc["_id"], {})),
+            doc["_id"] in with_data,
         )
         for doc in docs
     ]

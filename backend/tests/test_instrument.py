@@ -1,48 +1,15 @@
 """Service clients, API keys and the control-software endpoints (requirements §3.4, §10.2)."""
 
-from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from pymongo import AsyncMongoClient
 
-from tests.conftest import API, TEST_DB, TEST_MONGODB_URI, issue_frames, login_as, orcid
+from tests.conftest import API, issue_frames, login_as, new_key, orcid
 
 pytestmark = pytest.mark.db
 
-ADMIN = orcid(70)
 CU_K = {"technique": "exafs", "element": "Cu", "edge": "K", "detection": "transmission"}
-
-
-@pytest.fixture
-async def raw_db() -> AsyncIterator[Any]:
-    client: AsyncMongoClient[dict[str, Any]] = AsyncMongoClient(TEST_MONGODB_URI)
-    yield client[TEST_DB]
-    await client.close()
-
-
-async def new_key(client: AsyncClient, name: str = "BL22 control software") -> tuple[str, str]:
-    """As an admin, create a service client and a key; returns (client id, key)."""
-    await login_as(client, ADMIN, role="admin")
-    created = await client.post(f"{API}/service-clients", json={"name": name})
-    assert created.status_code == 201, created.text
-    client_id = created.json()["id"]
-    key = await client.post(f"{API}/service-clients/{client_id}/keys")
-    assert key.status_code == 201, key.text
-    return client_id, key.json()["key"]
-
-
-@pytest.fixture
-async def instrument(client: AsyncClient) -> AsyncIterator[AsyncClient]:
-    """A client authenticated with an API key (no session cookie)."""
-    _, key = await new_key(client)
-    async with AsyncClient(
-        transport=client._transport,
-        base_url="http://test",
-        headers={"Authorization": f"Bearer {key}"},
-    ) as c:
-        yield c
 
 
 async def ready_frame(

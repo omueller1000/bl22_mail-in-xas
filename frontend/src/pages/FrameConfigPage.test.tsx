@@ -15,8 +15,9 @@ const PLATE_TYPES: PlateType[] = [
 ];
 
 const SAMPLES: Sample[] = [
-  { id: "s2", name: "CuO", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], created_at: "2026-10-13T00:00:00Z", updated_at: "2026-10-13T00:00:00Z" },
-  { id: "s1", name: "Fe2O3", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], created_at: "2026-10-12T00:00:00Z", updated_at: "2026-10-12T00:00:00Z" },
+  { id: "s2", name: "CuO", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], data_frames: [], created_at: "2026-10-13T00:00:00Z", updated_at: "2026-10-13T00:00:00Z" },
+  { id: "s1", name: "Fe2O3", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], data_frames: [], created_at: "2026-10-12T00:00:00Z", updated_at: "2026-10-12T00:00:00Z" },
+  { id: "s3", name: "NiO", description: "", msds: null, archived: false, frozen: false, deletable: true, frames: [], data_frames: [], created_at: "2026-10-11T00:00:00Z", updated_at: "2026-10-11T00:00:00Z" },
 ];
 
 const OPTIONS = {
@@ -75,6 +76,7 @@ function frame(overrides: Partial<Frame> = {}): Frame {
     locked: false,
     storage: null,
     missing: [],
+    has_data: false,
     version: 4,
     created_at: "2026-10-12T00:00:00Z",
     updated_at: "2026-10-12T00:00:00Z",
@@ -135,14 +137,20 @@ describe("FrameConfigPage", () => {
     const dialog = await screen.findByRole("dialog", { name: "Position Left-B" });
     const place = within(dialog).getByRole("button", { name: "Place sample" });
     expect(place).toBeDisabled();
-    await userEvent.click(within(dialog).getByRole("row", { name: /^CuO/ }));
-    expect(within(dialog).getByRole("row", { name: /^CuO/ })).toHaveAttribute("aria-selected", "true");
+    // CuO is already at Right-B: a sample is placed only once per frame.
+    const cuo = within(dialog).getByRole("row", { name: /^CuO/ });
+    expect(cuo).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(cuo);
+    expect(cuo).toHaveAttribute("aria-selected", "false");
+
+    await userEvent.click(within(dialog).getByRole("row", { name: /^NiO/ }));
+    expect(within(dialog).getByRole("row", { name: /^NiO/ })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(place);
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const { url, body } = await lastBody(fetchMock, "PUT");
     expect(url).toMatch(/\/frames\/ABCD-EFGH\/positions\/Left-B$/);
-    expect(JSON.parse(body)).toEqual({ version: 4, sample_id: "s2" });
+    expect(JSON.parse(body)).toEqual({ version: 4, sample_id: "s3" });
   });
 
   it("lists samples newest first and filters them by the search text", async () => {
@@ -156,7 +164,7 @@ describe("FrameConfigPage", () => {
         .slice(1) // header
         .map((row) => row.querySelector("td")?.textContent);
     // Samples already on this frame show their positions.
-    expect(names()).toEqual(["CuO (Right-B)", "Fe2O3 (Left-A)"]);
+    expect(names()).toEqual(["CuO (Right-B)", "Fe2O3 (Left-A)", "NiO"]);
 
     await userEvent.type(within(dialog).getByRole("textbox", { name: "Search samples" }), "fe");
     expect(names()).toEqual(["Fe2O3 (Left-A)"]);

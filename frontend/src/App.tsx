@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router/dom";
 import { RequireRole, RequireUser } from "./auth/guards";
 import { Layout } from "./layout/Layout";
 import { AccountPage } from "./pages/AccountPage";
+import { DataPage } from "./pages/DataPage";
 import { ServiceClientsPage } from "./pages/admin/ServiceClientsPage";
 import { FrameConfigPage } from "./pages/FrameConfigPage";
 import { FramesPage } from "./pages/FramesPage";
@@ -42,6 +43,7 @@ const router = createBrowserRouter(
             { path: "samples", element: <SamplesPage /> },
             { path: "frames", element: <FramesPage /> },
             { path: "frames/:barcode", element: <FrameConfigPage /> },
+            { path: "frames/:barcode/data", element: <DataPage /> },
             {
               element: <RequireRole role="operator" />,
               children: [

@@ -158,3 +158,38 @@ async def issue_frames(client: AsyncClient, user_orcid: str, count: int = 1) -> 
 
     await login_as(client, user_orcid)
     return codes
+
+
+# --- instrument (API key) and direct database access ------------------------------------
+
+ADMIN = orcid(70)
+
+
+@pytest.fixture
+async def raw_db() -> AsyncIterator[Any]:
+    client: AsyncMongoClient[dict[str, Any]] = AsyncMongoClient(TEST_MONGODB_URI)
+    yield client[TEST_DB]
+    await client.close()
+
+
+async def new_key(client: AsyncClient, name: str = "BL22 control software") -> tuple[str, str]:
+    """As an admin, create a service client and a key; returns (client id, key)."""
+    await login_as(client, ADMIN, role="admin")
+    created = await client.post(f"{API}/service-clients", json={"name": name})
+    assert created.status_code == 201, created.text
+    client_id = created.json()["id"]
+    key = await client.post(f"{API}/service-clients/{client_id}/keys")
+    assert key.status_code == 201, key.text
+    return client_id, key.json()["key"]
+
+
+@pytest.fixture
+async def instrument(client: AsyncClient) -> AsyncIterator[AsyncClient]:
+    """A client authenticated with an API key (no session cookie)."""
+    _, key = await new_key(client)
+    async with AsyncClient(
+        transport=client._transport,
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {key}"},
+    ) as c:
+        yield c

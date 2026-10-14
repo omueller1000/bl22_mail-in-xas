@@ -183,8 +183,8 @@ async def test_missing_items_listed_until_complete(client: AsyncClient) -> None:
         "Place at least one sample on the right plate",
     ]
 
-    sample = (await client.post(f"{API}/samples", json={"name": "Fe2O3"})).json()["id"]
     for position in ("Left-A", "Right-C"):
+        sample = (await client.post(f"{API}/samples", json={"name": position})).json()["id"]
         await client.put(
             f"{API}/frames/{code}/positions/{position}",
             json={"version": await version(client, code), "sample_id": sample},

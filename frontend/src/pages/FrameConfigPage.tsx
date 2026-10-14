@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconChartLine, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 
@@ -85,6 +85,17 @@ export function FrameConfigPage() {
           <Badge variant="outline" color="gray">
             Container {frame.storage.container} · Slot {frame.storage.slot}
           </Badge>
+        )}
+        {frame.has_data && (
+          <Button
+            component={Link}
+            to={`/frames/${frame.barcode}/data`}
+            variant="light"
+            size="xs"
+            leftSection={<IconChartLine size={16} />}
+          >
+            Data
+          </Button>
         )}
       </Group>
       {readOnlyReason && <Alert color="gray">{readOnlyReason}</Alert>}
@@ -438,6 +449,7 @@ function PositionModal({
             selectedId={sampleId}
             onSelect={setSampleId}
             placements={placementsBySample(frame)}
+            position={position}
           />
         )}
         <Group justify="space-between">

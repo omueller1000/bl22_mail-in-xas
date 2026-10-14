@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import type { FrameState } from "../../api/client";
 import { useFrames, usePlateTypes } from "../../api/materials";
 import { PageLoader } from "../../auth/guards";
+import { DataLink } from "../../data/DataLink";
 import { plateSummary } from "../../frames/summary";
 import { FRAME_STATE_LABELS } from "../../materials/labels";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
@@ -74,9 +75,12 @@ export function AllFramesPage() {
               {shown.map((frame) => (
                 <Table.Tr key={frame.barcode}>
                   <Table.Td>
-                    <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
-                      {frame.barcode}
-                    </Anchor>
+                    <Group gap={6} wrap="nowrap">
+                      <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
+                        {frame.barcode}
+                      </Anchor>
+                      {frame.has_data && <DataLink barcode={frame.barcode} />}
+                    </Group>
                   </Table.Td>
                   <Table.Td>{frame.owner?.name}</Table.Td>
                   <Table.Td>

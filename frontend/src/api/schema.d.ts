@@ -949,6 +949,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/frames/{barcode}/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Frame Sweeps
+         * @description All sweeps of a frame, without their values (for choosing what to plot).
+         */
+        get: operations["list_frame_sweeps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sweeps/{sweep_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sweep
+         * @description A sweep's metadata and, if processed, the processing metadata (E0, parameters, ...).
+         */
+        get: operations["get_sweep"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sweeps/{sweep_id}/curve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sweep Curve
+         * @description One curve of a sweep: a raw channel or derived spectrum vs energy, or processed data.
+         */
+        get: operations["get_sweep_curve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/measurements/{measurement_id}/batches/{batch_no}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Merge Sweeps
+         * @description Average of the selected sweeps (by sweep number) of one batch; not stored (§11.3).
+         */
+        get: operations["merge_sweeps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/{barcode}/export.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Frame
+         * @description All raw and processed sweeps of a frame as XDI files in one ZIP (§11.5).
+         */
+        get: operations["export_frame"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1099,6 +1199,8 @@ export interface components {
             storage: components["schemas"]["StorageLocation"] | null;
             /** Missing */
             missing: string[];
+            /** Has Data */
+            has_data: boolean;
             /** Version */
             version: number;
             /**
@@ -1273,6 +1375,18 @@ export interface components {
             orcid_name?: string | null;
             user?: components["schemas"]["User"] | null;
         };
+        /**
+         * Measured
+         * @description What was actually measured: the measurement's settings when the sweep was uploaded.
+         */
+        Measured: {
+            technique: components["schemas"]["Technique"];
+            /** Element */
+            element: string;
+            edge: components["schemas"]["Edge"];
+            detection: components["schemas"]["Detection"];
+            beam: components["schemas"]["Beam"];
+        };
         /** Measurement */
         Measurement: {
             /** Id */
@@ -1420,12 +1534,33 @@ export interface components {
             /** Right */
             right?: string | null;
         };
+        /** PlotCurve */
+        PlotCurve: {
+            /** X */
+            x: (number | null)[];
+            /** Y */
+            y: (number | null)[];
+        };
         /** PositionAssign */
         PositionAssign: {
             /** Version */
             version: number;
             /** Sample Id */
             sample_id: string;
+        };
+        /** ProcessedInfo */
+        ProcessedInfo: {
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Has Chi */
+            has_chi: boolean;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
         };
         /**
          * ProcessedUpload
@@ -1558,6 +1693,8 @@ export interface components {
             deletable: boolean;
             /** Frames */
             frames: string[];
+            /** Data Frames */
+            data_frames: string[];
             /**
              * Created At
              * Format: date-time
@@ -1711,6 +1848,15 @@ export interface components {
             /** Locked */
             locked: boolean;
         };
+        /** SweepDetail */
+        SweepDetail: {
+            sweep: components["schemas"]["SweepInfo"];
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+            processed: components["schemas"]["ProcessedInfo"] | null;
+        };
         /** SweepInfo */
         SweepInfo: {
             /** Id */
@@ -1727,10 +1873,13 @@ export interface components {
             batch_no: number;
             /** Sweep No */
             sweep_no: number;
+            measured: components["schemas"]["Measured"];
             /** Points */
             points: number;
             /** Channels */
             channels: string[];
+            /** Spectra */
+            spectra: string[];
             /**
              * Uploaded At
              * Format: date-time
@@ -1815,6 +1964,11 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * View
+         * @enum {string}
+         */
+        View: "raw" | "spectrum" | "mu" | "chi";
         /**
          * WarningKind
          * @enum {string}
@@ -3720,6 +3874,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Sample"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_frame_sweeps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweepInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sweep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sweep_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweepDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sweep_curve: {
+        parameters: {
+            query: {
+                view: components["schemas"]["View"];
+                name?: string | null;
+            };
+            header?: never;
+            path: {
+                sweep_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotCurve"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_sweeps: {
+        parameters: {
+            query: {
+                view: components["schemas"]["View"];
+                sweeps: number[];
+                name?: string | null;
+            };
+            header?: never;
+            path: {
+                measurement_id: string;
+                batch_no: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotCurve"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_frame: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": unknown;
                 };
             };
             /** @description Validation Error */

@@ -57,5 +57,19 @@ async def last_numbers(
     }
 
 
+async def frames_having_data(db: Database, barcodes: list[str]) -> set[str]:
+    """The given frames that have at least one sweep."""
+    return set(await db[SWEEPS].distinct("frame", {"frame": {"$in": barcodes}}))
+
+
+async def frames_with_data(db: Database, sample_ids: list[ObjectId]) -> dict[ObjectId, list[str]]:
+    """{sample_id: sorted barcodes of the frames with data of that sample}."""
+    pipeline = [
+        {"$match": {"sample_id": {"$in": sample_ids}}},
+        {"$group": {"_id": "$sample_id", "frames": {"$addToSet": "$frame"}}},
+    ]
+    return {row["_id"]: sorted(row["frames"]) async for row in await db[SWEEPS].aggregate(pipeline)}
+
+
 async def sample_has_data(db: Database, sample_id: ObjectId) -> bool:
     return await db[SWEEPS].count_documents({"sample_id": sample_id}, limit=1) > 0

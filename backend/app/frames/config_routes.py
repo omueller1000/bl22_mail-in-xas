@@ -64,6 +64,21 @@ async def assign_sample(
     sample = await samples.get(db, sample_id) if sample_id else None
     if sample is None or sample["owner_id"] != user["_id"]:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown sample")
+    # A sample is placed at most once per frame; replicates are separate samples (§8.2).
+    elsewhere = next(
+        (
+            p["position"]
+            for p in doc.get("positions", [])
+            if p["sample_id"] == sample["_id"] and p["position"] != position
+        ),
+        None,
+    )
+    if elsewhere:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{sample['name']} is already at {elsewhere} on this frame. "
+            "Clear that position first, or create a separate sample for a replicate.",
+        )
 
     positions = [p for p in doc.get("positions", []) if p["position"] != position]
     positions.append({"position": position, "sample_id": sample["_id"]})

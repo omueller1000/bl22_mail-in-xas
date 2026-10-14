@@ -17,6 +17,7 @@ function sample(overrides: Partial<Sample>): Sample {
     frozen: false,
     deletable: true,
     frames: [],
+    data_frames: [],
     created_at: "2026-10-12T00:00:00Z",
     updated_at: "2026-10-12T00:00:00Z",
     ...overrides,
@@ -43,6 +44,35 @@ describe("SamplesPage", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const post = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "POST")!;
     expect(await post.json()).toEqual({ name: "Fe2O3", description: "hematite" });
+  });
+
+  it("lists the sample's frames with links to the frame and its data", async () => {
+    mockApi({
+      "GET /samples": () =>
+        json([
+          sample({
+            id: "s2",
+            name: "CuO",
+            frames: ["AAAA-AAAA", "BBBB-BBBB"],
+            data_frames: ["BBBB-BBBB"],
+          }),
+        ]),
+    });
+    renderWithProviders(<SamplesPage />);
+    expect(await screen.findByRole("link", { name: "AAAA-AAAA" })).toHaveAttribute(
+      "href",
+      "/frames/AAAA-AAAA",
+    );
+    expect(screen.getByRole("link", { name: "BBBB-BBBB" })).toHaveAttribute(
+      "href",
+      "/frames/BBBB-BBBB",
+    );
+    // A data icon only where this sample has data; it opens the viewer on the sample.
+    expect(screen.queryByRole("link", { name: "Data of AAAA-AAAA" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Data of BBBB-BBBB" })).toHaveAttribute(
+      "href",
+      "/frames/BBBB-BBBB/data?sample=s2",
+    );
   });
 
   it("filters the table by the search text", async () => {

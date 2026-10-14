@@ -68,6 +68,8 @@ class Frame(BaseModel):
     storage: StorageLocation | None
     # What is still missing before the frame can be declared safe; empty = complete.
     missing: list[str]
+    # Whether measured data exists for the frame (the data viewer has something to show).
+    has_data: bool
     # Incremented on every configuration change; sent back with changes to detect conflicts.
     version: int
     created_at: datetime
@@ -137,6 +139,7 @@ def to_model(
     owner: dict[str, Any] | None,
     sample_names: dict[Any, str],
     missing: list[str],
+    has_data: bool,
 ) -> Frame:
     safety = doc.get("safety_declared")
     return Frame(
@@ -157,6 +160,7 @@ def to_model(
         locked=doc.get("locked", False),
         storage=StorageLocation(**doc["storage"]) if doc.get("storage") else None,
         missing=missing,
+        has_data=has_data,
         version=doc.get("version", 0),
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],

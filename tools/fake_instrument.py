@@ -13,9 +13,14 @@ Configuration (environment variables):
     HT_XAS_INSTRUMENT_KEY   API key of a service client (required)
     HT_XAS_INSTRUMENT_URL   API base, default http://127.0.0.1:8010/mail-in-xas/api
 
-Usage (from backend/, which provides httpx):
+Usage (from backend/, which provides httpx and numpy):
     uv run python ../tools/fake_instrument.py queue
     uv run python ../tools/fake_instrument.py run AAAA-AACT path/to/folder-with-sweeps
+    uv run python ../tools/fake_instrument.py process AAAA-AACT path/to/folder-with-sweeps
+
+"run" uploads the raw sweeps and a crude processed result of each; "process" uploads only the
+processed results (again) for sweeps that were already uploaded. The processing is a rough
+stand-in for testing the portal, not a real EXAFS analysis.
 """
 
 import argparse
@@ -26,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import numpy as np
 
 FILENAME = re.compile(
     r"^(?P<barcode>[A-Z]{4}-[A-Z]{4})_(?P<position>(Left|Right)-[A-Z])_(?P<batch>\d+)_"
@@ -80,6 +86,50 @@ def read_legacy_sweep(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]
     return metadata, channels
 
 
+def crude_processing(channels: list[dict[str, Any]]) -> dict[str, Any]:
+    """A rough mu(E) and k^2 chi(k) from i0/i1 (transmission), only for testing the portal."""
+    c = {ch["name"]: np.asarray(ch["values"], dtype=float) for ch in channels}
+    order = np.argsort(c["energy"])
+    energy = c["energy"][order]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mu = np.log(c["i0"][order] / c["i1"][order])
+    ok = np.isfinite(mu)
+    # Continuous scans can repeat an energy value; keep the first.
+    energy, first = np.unique(energy[ok], return_index=True)
+    mu = mu[ok][first]
+
+    # E0: steepest rise of the smoothed spectrum, ignoring the first and last 10 %.
+    smooth = np.convolve(mu, np.ones(5) / 5, mode="same")
+    slope = np.gradient(smooth, energy)
+    inner = slice(len(energy) // 10, -len(energy) // 10)
+    e0 = float(energy[inner][np.argmax(slope[inner])])
+
+    pre = energy < e0 - 30
+    post = energy > e0 + 50
+    pre_line = np.polyval(np.polyfit(energy[pre], mu[pre], 1), energy)
+    post_fit = np.polyfit(energy[post], mu[post], 2)
+    step = float(np.polyval(post_fit, e0) - np.interp(e0, energy, pre_line))
+    norm = (mu - pre_line) / step
+
+    # chi(k): normalized mu above E0 minus a smooth polynomial background in k.
+    above = energy > e0 + 5
+    k = np.sqrt(0.262468 * (energy[above] - e0))
+    background = np.polyval(np.polyfit(k, norm[above], 4), k)
+    k_grid = np.arange(np.ceil(k[0] * 20) / 20, k[-1], 0.05)
+    chi = np.interp(k_grid, k, norm[above] - background)
+
+    return {
+        "metadata": {
+            "e0": round(e0, 2),
+            "edge_step": round(step, 5),
+            "kweight": 2,
+            "method": "fake_instrument crude processing (testing only)",
+        },
+        "mu": {"x": energy.tolist(), "y": mu.tolist()},
+        "chi": {"x": k_grid.round(4).tolist(), "y": (k_grid**2 * chi).tolist()},
+    }
+
+
 class Instrument:
     def __init__(self, base_url: str, key: str) -> None:
         self.http = httpx.Client(
@@ -110,6 +160,12 @@ class Instrument:
     def upload_sweep(self, measurement_id: str, sweep: dict[str, Any]) -> dict[str, Any]:
         return self.call("POST", f"/measurements/{measurement_id}/sweeps", json=sweep)
 
+    def upload_processed(
+        self, measurement_id: str, batch: int, sweep: int, processed: dict[str, Any]
+    ) -> None:
+        path = f"/measurements/{measurement_id}/sweeps/{batch}/{sweep}/processed"
+        self.call("PUT", path, json=processed)
+
 
 def find_measurement(frame: dict[str, Any], position: str, element: str, edge: str, technique: str):
     for p in frame["positions"]:
@@ -121,11 +177,37 @@ def find_measurement(frame: dict[str, Any], position: str, element: str, edge: s
     return None
 
 
-def run(instrument: Instrument, barcode: str, folder: Path) -> None:
-    """Schedule, load, upload all sweeps of the folder, mark done, return to storage."""
+def sweep_files(folder: Path) -> list[Path]:
     files = sorted(p for p in folder.iterdir() if FILENAME.match(p.name))
     if not files:
         raise SystemExit(f"No sweep files in {folder}")
+    return files
+
+
+def process(instrument: Instrument, barcode: str, folder: Path) -> None:
+    """Upload (or replace) the crude processed result of already uploaded sweeps."""
+    frame = instrument.frame(barcode)
+    for path in sweep_files(folder):
+        name = FILENAME.match(path.name)
+        assert name is not None
+        if name["barcode"] != barcode:
+            continue
+        measurement = find_measurement(
+            frame, name["position"], name["element"], name["edge"], name["technique"]
+        )
+        if measurement is None:
+            raise SystemExit(f"{path.name}: no matching measurement on {barcode}")
+        _, channels = read_legacy_sweep(path)
+        processed = crude_processing(channels)
+        instrument.upload_processed(
+            measurement["id"], int(name["batch"]), int(name["sweep"]), processed
+        )
+        print(f"  {path.name}: processed, E0 {processed['metadata']['e0']} eV")
+
+
+def run(instrument: Instrument, barcode: str, folder: Path) -> None:
+    """Schedule, load, upload all sweeps of the folder, mark done, return to storage."""
+    files = sweep_files(folder)
     frame = instrument.frame(barcode)
     print(f"{barcode}: {frame['state']}, slot {frame['storage']}")
 
@@ -155,6 +237,9 @@ def run(instrument: Instrument, barcode: str, folder: Path) -> None:
                 "channels": channels,
             },
         )
+        instrument.upload_processed(
+            measurement["id"], info["batch_no"], info["sweep_no"], crude_processing(channels)
+        )
         done.add(measurement["id"])
         print(
             f"  {path.name}: batch {info['batch_no']}, sweep {info['sweep_no']}, "
@@ -176,6 +261,9 @@ def main() -> None:
     run_parser = commands.add_parser("run", help="measure one frame using sweep files")
     run_parser.add_argument("barcode")
     run_parser.add_argument("folder", type=Path)
+    process_parser = commands.add_parser("process", help="upload processed data of a frame")
+    process_parser.add_argument("barcode")
+    process_parser.add_argument("folder", type=Path)
     args = parser.parse_args()
 
     key = os.environ.get("HT_XAS_INSTRUMENT_KEY")
@@ -196,6 +284,8 @@ def main() -> None:
             print(
                 f"{frame['barcode']}  container {slot['container']} slot {slot['slot']}: {pending}"
             )
+    elif args.command == "process":
+        process(instrument, args.barcode.upper(), args.folder)
     else:
         run(instrument, args.barcode.upper(), args.folder)
 

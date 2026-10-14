@@ -19,10 +19,21 @@ interface Props {
   onSelect: (sampleId: string) => void;
   /** Positions on the current frame per sample id; placed samples are highlighted. */
   placements?: Map<string, string[]>;
+  /**
+   * The position being edited. A sample is placed only once per frame, so samples placed at
+   * another position cannot be chosen.
+   */
+  position?: string;
 }
 
 /** Searchable table of samples; click a row to select it. */
-export function SamplePicker({ samples, selectedId, onSelect, placements = new Map() }: Props) {
+export function SamplePicker({
+  samples,
+  selectedId,
+  onSelect,
+  placements = new Map(),
+  position,
+}: Props) {
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const shown = needle
@@ -52,16 +63,25 @@ export function SamplePicker({ samples, selectedId, onSelect, placements = new M
             {shown.map((sample) => {
               const selected = sample.id === selectedId;
               const placedAt = placements.get(sample.id);
+              const elsewhere = Boolean(
+                position && placedAt && !placedAt.includes(position),
+              );
               return (
                 <Table.Tr
                   key={sample.id}
                   aria-selected={selected}
-                  tabIndex={0}
+                  aria-disabled={elsewhere || undefined}
+                  title={
+                    elsewhere
+                      ? `Already at ${placedAt!.join(", ")}. A sample is placed only once per frame; clear that position first, or create a separate sample for a replicate.`
+                      : undefined
+                  }
+                  tabIndex={elsewhere ? -1 : 0}
                   bg={selected ? "var(--mantine-primary-color-light)" : undefined}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onSelect(sample.id)}
+                  style={{ cursor: elsewhere ? "not-allowed" : "pointer", opacity: elsewhere ? 0.6 : 1 }}
+                  onClick={() => !elsewhere && onSelect(sample.id)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
+                    if (!elsewhere && (event.key === "Enter" || event.key === " ")) {
                       event.preventDefault();
                       onSelect(sample.id);
                     }

@@ -100,8 +100,13 @@ async def test_assign_replace_and_clear_samples(client: AsyncClient) -> None:
 
     response = await assign(client, code, "Left-A", fe)
     assert response.status_code == 200, response.text
-    await assign(client, code, "Left-B", fe)  # same sample in two positions
+    assert (await assign(client, code, "Left-A", fe)).status_code == 200  # same place again
+    # A sample is placed only once per frame.
+    twice = await assign(client, code, "Left-B", fe)
+    assert twice.status_code == 409
+    assert "already at Left-A" in twice.json()["detail"]
     await assign(client, code, "Left-A", cu)  # replace
+    await assign(client, code, "Left-B", fe)  # Fe2O3 is no longer elsewhere on the frame
     positions = {p["position"]: p["sample_name"] for p in (await frame(client, code))["positions"]}
     assert positions == {"Left-A": "CuO", "Left-B": "Fe2O3"}
 
@@ -136,9 +141,8 @@ async def test_only_own_samples(client: AsyncClient) -> None:
 async def test_changing_a_plate_clears_that_side(client: AsyncClient, raw_db: Any) -> None:
     [code] = await issue_frames(client, orcid(1))
     await set_plates(client, code, "8-circle", "8-circle")
-    sample = await new_sample(client)
-    await assign(client, code, "Left-A", sample)
-    await assign(client, code, "Right-A", sample)
+    await assign(client, code, "Left-A", await new_sample(client, "Fe2O3"))
+    await assign(client, code, "Right-A", await new_sample(client, "CuO"))
     await raw_db.measurements.insert_many(
         [{"frame": code, "position": "Left-A"}, {"frame": code, "position": "Right-A"}]
     )

@@ -97,7 +97,9 @@ async def has_data(db: Database, sample_id: ObjectId) -> bool:
     return await data.sample_has_data(db, sample_id)
 
 
-def to_model(doc: dict[str, Any], placed_on: list[dict[str, Any]], with_data: bool) -> Sample:
+def to_model(
+    doc: dict[str, Any], placed_on: list[dict[str, Any]], data_frames: list[str]
+) -> Sample:
     msds = doc.get("msds")
     return Sample(
         id=str(doc["_id"]),
@@ -106,17 +108,20 @@ def to_model(doc: dict[str, Any], placed_on: list[dict[str, Any]], with_data: bo
         msds=Msds(**{k: msds[k] for k in ("filename", "size", "uploaded_at")}) if msds else None,
         archived=doc["archived"],
         frozen=doc["frozen"],
-        deletable=not with_data and not any(blocks_deletion(f) for f in placed_on),
+        deletable=not data_frames and not any(blocks_deletion(f) for f in placed_on),
         frames=sorted(f["_id"] for f in placed_on),
+        data_frames=data_frames,
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],
     )
 
 
 async def to_models(db: Database, docs: list[dict[str, Any]]) -> list[Sample]:
-    placed = await frames_with(db, [d["_id"] for d in docs])
+    ids = [d["_id"] for d in docs]
+    placed = await frames_with(db, ids)
+    with_data = await data.frames_with_data(db, ids)
     result = []
     for doc in docs:
         on = [f for f in placed if any(p["sample_id"] == doc["_id"] for p in f["positions"])]
-        result.append(to_model(doc, on, await has_data(db, doc["_id"])))
+        result.append(to_model(doc, on, with_data.get(doc["_id"], [])))
     return result

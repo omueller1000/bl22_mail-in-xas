@@ -18,6 +18,7 @@ from app.auth import routes as auth_routes
 from app.config import Settings, get_settings
 from app.csrf import csrf_middleware
 from app.data import repository as data
+from app.data import routes as data_routes
 from app.db import Database, create_client
 from app.frames import config_routes as frame_config_routes
 from app.frames import repository as frames
@@ -89,6 +90,7 @@ def create_app(
     app.include_router(instrument_routes.router, prefix=prefix)
     app.include_router(material_requests_routes.router, prefix=prefix)
     app.include_router(samples_routes.router, prefix=prefix)
+    app.include_router(data_routes.router, prefix=prefix)
 
     return app
 

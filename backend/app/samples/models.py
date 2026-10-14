@@ -40,7 +40,9 @@ class Sample(BaseModel):
     frozen: bool
     # Whether the delete rules currently allow deleting the sample.
     deletable: bool
-    # Frames the sample is placed on.
+    # Frames the sample is placed on (at most one position per frame).
     frames: list[str]
+    # Of those, the frames that have measured data of this sample.
+    data_frames: list[str]
     created_at: datetime
     updated_at: datetime

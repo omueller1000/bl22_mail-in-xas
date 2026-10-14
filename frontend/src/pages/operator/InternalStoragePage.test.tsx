@@ -33,6 +33,7 @@ function frame(state: Frame["state"]): Frame {
     locked: true,
     storage: null,
     missing: [],
+    has_data: false,
     version: 3,
     created_at: "2026-10-12T00:00:00Z",
     updated_at: "2026-10-12T00:00:00Z",
