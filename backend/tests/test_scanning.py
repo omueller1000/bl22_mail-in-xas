@@ -47,24 +47,27 @@ async def state_of(client: AsyncClient, code: str) -> str:
 # --- receive ---------------------------------------------------------------------------------
 
 
-async def test_check_receive_explains_each_frame(client: AsyncClient, raw_db: Any) -> None:
+async def test_lookup_explains_receiving_each_frame(client: AsyncClient, raw_db: Any) -> None:
     [ready] = await frames_in(client, raw_db, "shipped_to_user", **SAFE, locked=True)
     [unlocked] = await frames_in(client, raw_db, "shipped_to_user", **SAFE)
     [unsafe] = await frames_in(client, raw_db, "shipped_to_user")
     [not_shipped] = await frames_in(client, raw_db, "issued")
 
-    results = await scan(
-        client, "check", "receive", [ready, unlocked, unsafe, not_shipped, "ZZZZ-ZZZZ"]
-    )
-    by_code = {r["barcode"]: r for r in results}
-    assert by_code[ready]["target_state"] == "received" and by_code[ready]["warning"] is None
-    assert by_code[unlocked]["target_state"] == "received"
-    assert by_code[unlocked]["warning"] == "Not locked"
-    assert by_code[unsafe]["target_state"] == "received_on_hold"
-    assert by_code[not_shipped]["target_state"] is None
-    assert "issued" in by_code[not_shipped]["problem"]
-    assert by_code["ZZZZ-ZZZZ"]["problem"] == "Unknown barcode"
-    assert by_code[ready]["owner"] == "Ada Test"
+    codes = [ready, unlocked, unsafe, not_shipped, "ZZZZ-ZZZZ"]
+    response = await client.post(f"{API}/scans/lookup", json={"barcodes": codes})
+    receive = {
+        f["barcode"]: next(a for a in f["actions"] if a["action"] == "receive")
+        for f in response.json()
+    }
+    assert receive[ready]["target_state"] == "received" and receive[ready]["warning"] is None
+    assert receive[unlocked]["target_state"] == "received"
+    assert receive[unlocked]["warning"] == "Not locked"
+    assert receive[unsafe]["target_state"] == "received_on_hold"
+    assert receive[not_shipped]["target_state"] is None
+    assert "issued" in receive[not_shipped]["problem"]
+    assert receive["ZZZZ-ZZZZ"]["problem"] == "Unknown barcode"
+    owners = {f["barcode"]: f["owner"] for f in response.json()}
+    assert owners[ready] == "Ada Test"
     # Checking changes nothing.
     assert await state_of(client, ready) == "shipped_to_user"
 
@@ -90,10 +93,37 @@ async def test_apply_moves_valid_frames_only(client: AsyncClient, raw_db: Any) -
     assert await state_of(client, not_shipped) == "issued"
 
 
+async def test_lookup_reports_every_action(client: AsyncClient, raw_db: Any) -> None:
+    [unsafe] = await frames_in(client, raw_db, "shipped_to_user")
+    [stored] = await frames_in(client, raw_db, "internal_storage", **SAFE, locked=True)
+
+    response = await client.post(f"{API}/scans/lookup", json={"barcodes": [unsafe, stored]})
+    assert response.status_code == 200
+    by_code = {f["barcode"]: f for f in response.json()}
+
+    actions = {a["action"]: a for a in by_code[unsafe]["actions"]}
+    assert list(actions) == ["receive", "external_storage", "return", "void"]
+    assert actions["receive"]["target_state"] == "received_on_hold"
+    assert actions["receive"]["warning"] == "Not declared safe: put on hold"
+    assert actions["return"]["target_state"] is None
+    assert actions["void"]["target_state"] == "void"
+
+    stored_actions = {a["action"]: a["target_state"] for a in by_code[stored]["actions"]}
+    assert stored_actions == {
+        "receive": None,
+        "external_storage": "external_storage",
+        "return": "returned",
+        "void": "void",
+    }
+    assert by_code[stored]["safe"] is True and by_code[stored]["locked"] is True
+    assert await state_of(client, unsafe) == "shipped_to_user"  # nothing changed
+
+
 async def test_users_cannot_scan(client: AsyncClient) -> None:
     await login_as(client, orcid(1))
+    lookup = {"barcodes": ["AAAA-AAAA"]}
+    assert (await client.post(f"{API}/scans/lookup", json=lookup)).status_code == 403
     body = {"action": "receive", "barcodes": ["AAAA-AAAA"]}
-    assert (await client.post(f"{API}/scans/check", json=body)).status_code == 403
     assert (await client.post(f"{API}/scans/apply", json=body)).status_code == 403
 
 

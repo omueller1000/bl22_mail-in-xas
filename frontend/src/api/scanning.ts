@@ -16,9 +16,9 @@ function useRefreshAfterMove() {
     ]);
 }
 
-/** What an action would do to the given barcodes (changes nothing). */
-export async function checkScan(action: ScanAction, barcodes: string[]) {
-  return unwrap(await api.POST("/scans/check", { body: { action, barcodes } }));
+/** Scanned frames with what each action would do to them (changes nothing). */
+export async function lookupScan(barcodes: string[]) {
+  return unwrap(await api.POST("/scans/lookup", { body: { barcodes } }));
 }
 
 export function useApplyScan() {

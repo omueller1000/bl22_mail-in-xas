@@ -24,6 +24,8 @@ export type MeasurementInput = Schemas["MeasurementInput"];
 export type MeasurementOptions = Schemas["MeasurementOptions"];
 export type ScanAction = Schemas["ScanAction"];
 export type ScanResult = Schemas["ScanResult"];
+export type ScannedFrame = Schemas["ScannedFrame"];
+export type ActionOutcome = Schemas["ActionOutcome"];
 export type StoredFrame = Schemas["StoredFrame"];
 export type FrameWarning = Schemas["FrameWarning"];
 

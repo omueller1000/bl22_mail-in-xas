@@ -4,116 +4,117 @@ import {
   Card,
   Grid,
   Group,
-  SegmentedControl,
+  Modal,
   Stack,
   Table,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowRight, IconCheck, IconX } from "@tabler/icons-react";
-import { useState } from "react";
+import {
+  IconBan,
+  IconBuildingWarehouse,
+  IconCheck,
+  IconPackageImport,
+  IconTruckReturn,
+  IconX,
+} from "@tabler/icons-react";
+import { type ReactNode, useState } from "react";
 
-import type { ScanAction, ScanResult } from "../../api/client";
-import { checkScan, useApplyScan } from "../../api/scanning";
+import type { ActionOutcome, ScanAction, ScannedFrame, ScanResult } from "../../api/client";
+import { lookupScan, useApplyScan } from "../../api/scanning";
 import { ScanInput } from "../../components/ScanInput";
-import { FRAME_STATE_LABELS, frameStateColor } from "../../materials/labels";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
+import { FRAME_STATE_LABELS, frameStateColor } from "../../materials/labels";
 
-const ACTIONS: { value: ScanAction; label: string; button: string }[] = [
-  { value: "receive", label: "Receive", button: "Receive" },
-  { value: "external_storage", label: "External storage", button: "Move to external storage" },
-  { value: "return", label: "Return to user", button: "Mark returned" },
-  { value: "void", label: "Void", button: "Void" },
+const ACTIONS: { action: ScanAction; label: string; icon: ReactNode; color: string }[] = [
+  { action: "receive", label: "Receive", icon: <IconPackageImport size={18} />, color: "blue" },
+  {
+    action: "external_storage",
+    label: "External storage",
+    icon: <IconBuildingWarehouse size={18} />,
+    color: "teal",
+  },
+  { action: "return", label: "Return to user", icon: <IconTruckReturn size={18} />, color: "grape" },
+  { action: "void", label: "Void", icon: <IconBan size={18} />, color: "red" },
 ];
 
+interface Done extends ScanResult {
+  label: string;
+}
+
 /**
- * Group scanning (requirements §9.1): scanned codes collect in the left table with what the
- * action would do; the action moves every frame that can make the move into the right table.
- * Frames that cannot move stay on the left, highlighted with the reason.
+ * Scanning at the facility (requirements §9): scanned frames collect in the left table, each
+ * with one button per action. A button is enabled only if that move is possible; its tooltip
+ * says what will happen. Moved frames go to the right table.
  */
 export function ScanPage() {
-  const [action, setAction] = useState<ScanAction>("receive");
-  const [scanned, setScanned] = useState<ScanResult[]>([]);
-  const [done, setDone] = useState<ScanResult[]>([]);
-  const [checking, setChecking] = useState(false);
+  const [scanned, setScanned] = useState<ScannedFrame[]>([]);
+  const [done, setDone] = useState<Done[]>([]);
+  const [confirmVoid, setConfirmVoid] = useState<string | null>(null);
   const apply = useApplyScan();
-  const current = ACTIONS.find((a) => a.value === action)!;
-  const movable = scanned.filter((r) => r.target_state);
+  const fail = (err: Error) => notifications.show({ color: "red", message: err.message });
 
-  const recheck = async (nextAction: ScanAction, codes: string[]) => {
+  const lookup = async (codes: string[]) => {
     if (codes.length === 0) return setScanned([]);
-    setChecking(true);
     try {
-      setScanned(await checkScan(nextAction, codes));
+      setScanned(await lookupScan(codes));
     } catch (err) {
-      notifications.show({ color: "red", message: (err as Error).message });
-    } finally {
-      setChecking(false);
+      fail(err as Error);
     }
   };
 
   const onScan = (barcode: string) => {
-    if (scanned.some((r) => r.barcode === barcode)) {
+    if (scanned.some((f) => f.barcode === barcode)) {
       notifications.show({ color: "yellow", message: `${barcode} is already in the list` });
       return;
     }
-    void recheck(action, [...scanned.map((r) => r.barcode), barcode]);
+    void lookup([...scanned.map((f) => f.barcode), barcode]);
   };
 
-  const changeAction = (value: string) => {
-    setAction(value as ScanAction);
-    setDone([]);
-    void recheck(value as ScanAction, scanned.map((r) => r.barcode));
-  };
-
-  const run = () =>
+  const run = (barcode: string, action: ScanAction) =>
     apply.mutate(
-      { action, barcodes: movable.map((r) => r.barcode) },
+      { action, barcodes: [barcode] },
       {
-        onSuccess: (results) => {
-          const moved = results.filter((r) => r.moved);
-          const movedCodes = new Set(moved.map((r) => r.barcode));
-          setDone((rows) => [...moved, ...rows]);
-          // Frames that did not move (e.g. changed meanwhile) stay with a fresh check.
-          void recheck(action, scanned.map((r) => r.barcode).filter((c) => !movedCodes.has(c)));
-          notifications.show({ color: "green", message: `${moved.length} frame(s) done` });
+        onSuccess: ([result]) => {
+          const label = ACTIONS.find((a) => a.action === action)!.label;
+          if (result?.moved) {
+            setDone((rows) => [{ ...result, label }, ...rows]);
+            setScanned((rows) => rows.filter((f) => f.barcode !== barcode));
+          } else {
+            fail(new Error(`${barcode}: ${result?.problem ?? "could not be moved"}`));
+            void lookup(scanned.map((f) => f.barcode)); // the frame changed meanwhile
+          }
         },
-        onError: (err) => notifications.show({ color: "red", message: err.message }),
+        onError: fail,
       },
     );
 
   return (
     <Stack>
       <Title order={2}>Scan frames</Title>
-      <SegmentedControl data={ACTIONS} value={action} onChange={changeAction} w="fit-content" />
       <Grid gap="lg">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Card withBorder>
             <Stack>
               <Group justify="space-between" align="flex-end">
                 <ScanInput onScan={onScan} disabled={apply.isPending} />
-                <Group gap="xs">
-                  <Button
-                    variant="default"
-                    disabled={scanned.length === 0}
-                    onClick={() => setScanned([])}
-                  >
-                    Clear
-                  </Button>
-                  <Button
-                    rightSection={<IconArrowRight size={16} />}
-                    disabled={movable.length === 0 || checking}
-                    loading={apply.isPending}
-                    onClick={run}
-                  >
-                    {current.button} ({movable.length})
-                  </Button>
-                </Group>
+                <Button
+                  variant="default"
+                  disabled={scanned.length === 0}
+                  onClick={() => setScanned([])}
+                >
+                  Clear
+                </Button>
               </Group>
               <ScannedTable
                 rows={scanned}
-                onRemove={(code) => setScanned((rows) => rows.filter((r) => r.barcode !== code))}
+                busy={apply.isPending}
+                onAction={(barcode, action) =>
+                  action === "void" ? setConfirmVoid(barcode) : run(barcode, action)
+                }
+                onRemove={(code) => setScanned((rows) => rows.filter((f) => f.barcode !== code))}
               />
             </Stack>
           </Card>
@@ -127,11 +128,44 @@ export function ScanPage() {
           </Card>
         </Grid.Col>
       </Grid>
+      <Modal opened={confirmVoid !== null} onClose={() => setConfirmVoid(null)} title="Void frame">
+        <Stack>
+          <Text size="sm">
+            Void <b>{confirmVoid}</b>? A voided frame (lost or damaged) can no longer be used. This
+            cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirmVoid(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={apply.isPending}
+              onClick={() => {
+                if (confirmVoid) run(confirmVoid, "void");
+                setConfirmVoid(null);
+              }}
+            >
+              Void
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
 
-function ScannedTable({ rows, onRemove }: { rows: ScanResult[]; onRemove: (code: string) => void }) {
+function ScannedTable({
+  rows,
+  busy,
+  onAction,
+  onRemove,
+}: {
+  rows: ScannedFrame[];
+  busy: boolean;
+  onAction: (barcode: string, action: ScanAction) => void;
+  onRemove: (barcode: string) => void;
+}) {
   if (rows.length === 0) {
     return (
       <Text size="sm" c="dimmed">
@@ -140,7 +174,7 @@ function ScannedTable({ rows, onRemove }: { rows: ScanResult[]; onRemove: (code:
     );
   }
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <Table.ScrollContainer minWidth={640}>
       <Table aria-label="Scanned frames">
         <Table.Thead>
           <Table.Tr>
@@ -149,46 +183,56 @@ function ScannedTable({ rows, onRemove }: { rows: ScanResult[]; onRemove: (code:
             <Table.Th>Now</Table.Th>
             <Table.Th>Safe</Table.Th>
             <Table.Th>Locked</Table.Th>
-            <Table.Th>Result</Table.Th>
+            <Table.Th>Action</Table.Th>
             <Table.Th w={30} />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {rows.map((r) => (
+          {rows.map((f) => (
             <Table.Tr
-              key={r.barcode}
-              bg={r.problem ? "var(--mantine-color-red-light)" : r.warning ? "var(--mantine-color-yellow-light)" : undefined}
+              key={f.barcode}
+              bg={f.current_state ? undefined : "var(--mantine-color-red-light)"}
             >
-              <Table.Td ff="monospace">{r.barcode}</Table.Td>
-              <Table.Td>{r.owner ?? "—"}</Table.Td>
-              <Table.Td>{r.current_state ? <FrameStateBadge state={r.current_state} /> : "—"}</Table.Td>
-              <Table.Td>{flag(r.current_state ? r.safe : null)}</Table.Td>
-              <Table.Td>{flag(r.current_state ? r.locked : null)}</Table.Td>
+              <Table.Td ff="monospace">{f.barcode}</Table.Td>
+              <Table.Td>{f.owner ?? "—"}</Table.Td>
               <Table.Td>
-                {r.target_state ? (
-                  <Stack gap={0}>
-                    <Text size="sm" c={frameStateColor(r.target_state)}>
-                      → {FRAME_STATE_LABELS[r.target_state]}
-                    </Text>
-                    {r.warning && (
-                      <Text size="xs" c="var(--mantine-color-yellow-light-color)" fw={600}>
-                        {r.warning}
-                      </Text>
-                    )}
-                  </Stack>
+                {f.current_state ? (
+                  <FrameStateBadge state={f.current_state} />
                 ) : (
                   <Text size="sm" c="red" fw={500}>
-                    {r.problem}
+                    Unknown barcode
                   </Text>
                 )}
+              </Table.Td>
+              <Table.Td>{flag(f.current_state ? f.safe : null)}</Table.Td>
+              <Table.Td>{flag(f.current_state ? f.locked : null)}</Table.Td>
+              <Table.Td>
+                <Group gap={4} wrap="nowrap">
+                  {ACTIONS.map((a) => {
+                    const o = f.actions.find((x) => x.action === a.action)!;
+                    return (
+                      <Tooltip key={a.action} label={hint(a.label, o)} withArrow multiline maw={260}>
+                        <ActionIcon
+                          variant="light"
+                          color={a.color}
+                          aria-label={`${a.label} ${f.barcode}`}
+                          disabled={!o.target_state || busy}
+                          onClick={() => onAction(f.barcode, a.action)}
+                        >
+                          {a.icon}
+                        </ActionIcon>
+                      </Tooltip>
+                    );
+                  })}
+                </Group>
               </Table.Td>
               <Table.Td>
                 <ActionIcon
                   variant="subtle"
                   color="gray"
                   size="sm"
-                  aria-label={`Remove ${r.barcode}`}
-                  onClick={() => onRemove(r.barcode)}
+                  aria-label={`Remove ${f.barcode}`}
+                  onClick={() => onRemove(f.barcode)}
                 >
                   <IconX size={14} />
                 </ActionIcon>
@@ -201,11 +245,17 @@ function ScannedTable({ rows, onRemove }: { rows: ScanResult[]; onRemove: (code:
   );
 }
 
-function DoneTable({ rows }: { rows: ScanResult[] }) {
+/** "Receive → Received, on hold. Not declared safe: put on hold" or "Receive: <reason>". */
+function hint(label: string, o: ActionOutcome): string {
+  if (!o.target_state) return `${label}: ${o.problem ?? "not possible"}`;
+  return `${label} → ${FRAME_STATE_LABELS[o.target_state]}${o.warning ? `. ${o.warning}` : ""}`;
+}
+
+function DoneTable({ rows }: { rows: Done[] }) {
   if (rows.length === 0) {
     return (
       <Text size="sm" c="dimmed">
-        Frames the action has moved appear here.
+        Frames you move appear here.
       </Text>
     );
   }
@@ -215,14 +265,16 @@ function DoneTable({ rows }: { rows: ScanResult[] }) {
         <Table.Tr>
           <Table.Th>Barcode</Table.Th>
           <Table.Th>User</Table.Th>
+          <Table.Th>Action</Table.Th>
           <Table.Th>New state</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map((r) => (
-          <Table.Tr key={r.barcode}>
+        {rows.map((r, i) => (
+          <Table.Tr key={`${r.barcode}-${i}`}>
             <Table.Td ff="monospace">{r.barcode}</Table.Td>
             <Table.Td>{r.owner ?? "—"}</Table.Td>
+            <Table.Td>{r.label}</Table.Td>
             <Table.Td>
               {r.target_state && (
                 <FrameStateBadge

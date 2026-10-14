@@ -476,7 +476,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/check": {
+    "/scans/lookup": {
         parameters: {
             query?: never;
             header?: never;
@@ -486,10 +486,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Check Scan
-         * @description What the action would do to each scanned frame (nothing is changed).
+         * Lookup Scan
+         * @description Scanned frames with what each scan action would do to them (nothing is changed).
          */
-        post: operations["check_scan"];
+        post: operations["lookup_scan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -762,6 +762,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionOutcome */
+        ActionOutcome: {
+            action: components["schemas"]["ScanAction"];
+            target_state: components["schemas"]["FrameState"] | null;
+            /** Problem */
+            problem: string | null;
+            /** Warning */
+            warning: string | null;
+        };
         /**
          * Address
          * @description Shipping address; must accept international formats.
@@ -921,6 +930,11 @@ export interface components {
         };
         /** IssueBarcodes */
         IssueBarcodes: {
+            /** Barcodes */
+            barcodes: string[];
+        };
+        /** LookupRequest */
+        LookupRequest: {
             /** Barcodes */
             barcodes: string[];
         };
@@ -1291,6 +1305,20 @@ export interface components {
             warning: string | null;
             /** Moved */
             moved: boolean;
+        };
+        /** ScannedFrame */
+        ScannedFrame: {
+            /** Barcode */
+            barcode: string;
+            current_state: components["schemas"]["FrameState"] | null;
+            /** Owner */
+            owner: string | null;
+            /** Safe */
+            safe: boolean;
+            /** Locked */
+            locked: boolean;
+            /** Actions */
+            actions: components["schemas"]["ActionOutcome"][];
         };
         /** ShippingGroup */
         ShippingGroup: {
@@ -2308,7 +2336,7 @@ export interface operations {
             };
         };
     };
-    check_scan: {
+    lookup_scan: {
         parameters: {
             query?: never;
             header?: never;
@@ -2317,7 +2345,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ScanRequest"];
+                "application/json": components["schemas"]["LookupRequest"];
             };
         };
         responses: {
@@ -2327,7 +2355,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanResult"][];
+                    "application/json": components["schemas"]["ScannedFrame"][];
                 };
             };
             /** @description Validation Error */

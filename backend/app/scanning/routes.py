@@ -61,13 +61,58 @@ class ScanResult(BaseModel):
     moved: bool
 
 
-@router.post("/scans/check")
-async def check_scan(body: ScanRequest, _: Operator, db: Db) -> list[ScanResult]:
-    """What the action would do to each scanned frame (nothing is changed)."""
+class LookupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    barcodes: list[Barcode] = Field(min_length=1, max_length=200)
+
+
+class ActionOutcome(BaseModel):
+    action: ScanAction
+    # State the frame would move to; None if this action is not possible.
+    target_state: FrameState | None
+    problem: str | None
+    warning: str | None
+
+
+class ScannedFrame(BaseModel):
+    barcode: str
+    current_state: FrameState | None
+    owner: str | None
+    safe: bool
+    locked: bool
+    actions: list[ActionOutcome]
+
+
+@router.post("/scans/lookup")
+async def lookup_scan(body: LookupRequest, _: Operator, db: Db) -> list[ScannedFrame]:
+    """Scanned frames with what each scan action would do to them (nothing is changed)."""
     codes = list(dict.fromkeys(body.barcodes))
     docs = {d["_id"]: d for d in await frames.find(db, {"_id": {"$in": codes}})}
     owners = await _owners(db, docs.values())
-    return [_result(body.action, code, docs.get(code), owners, moved=False) for code in codes]
+    result = []
+    for code in codes:
+        frame = docs.get(code)
+        owner = owners.get(frame.get("owner_id")) if frame else None
+        outcomes = []
+        for action in ScanAction:
+            o = outcome(action, frame)
+            outcomes.append(
+                ActionOutcome(
+                    action=action, target_state=o.target, problem=o.problem, warning=o.warning
+                )
+            )
+        result.append(
+            ScannedFrame(
+                barcode=code,
+                current_state=frame["state"] if frame else None,
+                owner=owner["name"] if owner else None,
+                safe=bool(frame and frame.get("safety_declared")),
+                locked=bool(frame and frame.get("locked")),
+                actions=outcomes,
+            )
+        )
+    return result
 
 
 @router.post("/scans/apply")
