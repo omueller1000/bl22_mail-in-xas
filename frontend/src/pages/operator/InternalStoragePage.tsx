@@ -1,10 +1,12 @@
 import {
+  ActionIcon,
   Alert,
   Anchor,
   Box,
   Button,
   Card,
   Group,
+  Modal,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -12,19 +14,26 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconLock } from "@tabler/icons-react";
+import { IconArrowBackUp, IconBuildingWarehouse, IconLock } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import type { Frame, StoredFrame } from "../../api/client";
 import { fetchFrame } from "../../api/materials";
-import { useInternalStorage, useStoreInternally } from "../../api/scanning";
+import {
+  useApplyScan,
+  useInternalStorage,
+  useRelease,
+  useStoreInternally,
+} from "../../api/scanning";
 import { PageLoader } from "../../auth/guards";
 import { ScanInput } from "../../components/ScanInput";
-import { FRAME_STATE_LABELS } from "../../materials/labels";
+import { YesNoIcon } from "../../components/YesNoIcon";
+import { FRAME_STATE_LABELS, formatDateTime } from "../../materials/labels";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
 
 const CONTAINERS = [0, 1, 2];
@@ -207,44 +216,59 @@ function OccupancyGrid({
             {SLOTS.map((s) => {
               const frame = occupant(c, s);
               const isSelected = selected?.container === c && selected.slot === s;
-              const busy = frame && frame.state !== "internal_storage";
-              return (
-                <UnstyledButton
-                  key={s}
-                  disabled={Boolean(frame) || !selected}
-                  onClick={() => onPick(c, s)}
-                  aria-label={`Container ${c} slot ${s}: ${frame ? frame.barcode : "free"}`}
-                >
-                  <Box
-                    px="xs"
-                    py={2}
-                    style={{
-                      borderRadius: 4,
-                      background: isSelected
-                        ? "var(--mantine-color-orange-light)"
-                        : frame
-                          ? busy
-                            ? "var(--mantine-color-yellow-light)"
-                            : "var(--mantine-primary-color-light)"
-                          : undefined,
-                      border: "1px solid var(--mantine-color-default-border)",
-                    }}
+              const atBeamline = frame && frame.state !== "internal_storage";
+              const cellStyle = {
+                borderRadius: 4,
+                background: isSelected
+                  ? "var(--mantine-color-orange-light)"
+                  : frame
+                    ? atBeamline
+                      ? "var(--mantine-color-yellow-light)"
+                      : "var(--mantine-primary-color-light)"
+                    : undefined,
+                border: "1px solid var(--mantine-color-default-border)",
+              };
+              if (!frame) {
+                // A free slot: click it to choose it for the frame being stored.
+                return (
+                  <UnstyledButton
+                    key={s}
+                    disabled={!selected}
+                    onClick={() => onPick(c, s)}
+                    aria-label={`Container ${c} slot ${s}: free`}
                   >
+                    <Box px="xs" py={2} style={cellStyle}>
+                      <Group gap="xs" wrap="nowrap" mih={22}>
+                        <Text size="xs" c="dimmed" w={18}>
+                          {s}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          free
+                        </Text>
+                      </Group>
+                    </Box>
+                  </UnstyledButton>
+                );
+              }
+              return (
+                <Box key={s} px="xs" py={2} style={cellStyle} aria-label={`Container ${c} slot ${s}: ${frame.barcode}`}>
+                  <Group gap="xs" wrap="nowrap" justify="space-between">
                     <Group gap="xs" wrap="nowrap">
                       <Text size="xs" c="dimmed" w={18}>
                         {s}
                       </Text>
                       <Text size="xs" ff="monospace">
-                        {frame ? frame.barcode : "free"}
+                        {frame.barcode}
                       </Text>
-                      {busy && (
+                      {atBeamline && (
                         <Text size="xs" c="dimmed">
                           {FRAME_STATE_LABELS[frame.state]}
                         </Text>
                       )}
                     </Group>
-                  </Box>
-                </UnstyledButton>
+                    <SlotActions frame={frame} />
+                  </Group>
+                </Box>
               );
             })}
           </Stack>
@@ -254,20 +278,108 @@ function OccupancyGrid({
   );
 }
 
+/**
+ * Buttons on an occupied slot:
+ * - in its slot: move to external storage (frees the slot), immediately;
+ * - scheduled or loaded: release it back into its slot (after a control-software crash),
+ *   after confirmation.
+ */
+function SlotActions({ frame }: { frame: StoredFrame }) {
+  const apply = useApplyScan();
+  const release = useRelease();
+  const [confirming, setConfirming] = useState(false);
+  const notify = (ok: boolean, message: string) =>
+    notifications.show({ color: ok ? "green" : "red", message });
+
+  if (frame.state === "internal_storage") {
+    return (
+      <Tooltip label="move to external storage" withArrow>
+        <ActionIcon
+          variant="light"
+          color="teal"
+          size="sm"
+          aria-label={`move ${frame.barcode} to external storage`}
+          loading={apply.isPending}
+          onClick={() =>
+            apply.mutate(
+              { action: "external_storage", barcodes: [frame.barcode] },
+              {
+                onSuccess: ([result]) =>
+                  result?.moved
+                    ? notify(true, `${frame.barcode} moved to external storage`)
+                    : notify(false, `${frame.barcode}: ${result?.problem ?? "not moved"}`),
+                onError: (err) => notify(false, err.message),
+              },
+            )
+          }
+        >
+          <IconBuildingWarehouse size={14} />
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+  return (
+    <>
+      <Tooltip label="release: back into this slot (control software stopped)" withArrow>
+        <ActionIcon
+          variant="light"
+          color="orange"
+          size="sm"
+          aria-label={`release ${frame.barcode} back into its slot`}
+          loading={release.isPending}
+          onClick={() => setConfirming(true)}
+        >
+          <IconArrowBackUp size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Modal opened={confirming} onClose={() => setConfirming(false)} title="Release frame">
+        <Stack>
+          <Text size="sm">
+            Use this when the control software stopped while handling <b>{frame.barcode}</b>. Put
+            the frame back into container {frame.container}, slot {frame.slot} by hand first,
+            then release it here before restarting the control software.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              loading={release.isPending}
+              onClick={() =>
+                release.mutate(frame.barcode, {
+                  onSuccess: () => {
+                    setConfirming(false);
+                    notify(true, `${frame.barcode} released back into its slot`);
+                  },
+                  onError: (err) => notify(false, err.message),
+                })
+              }
+            >
+              Release
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
 function StoredTable({ rows }: { rows: StoredFrame[] }) {
   if (rows.length === 0) return <Text c="dimmed">No frames in internal storage.</Text>;
   return (
-    <Table.ScrollContainer minWidth={700}>
+    <Table.ScrollContainer minWidth={860}>
       <Table striped aria-label="Frames in internal storage">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Container</Table.Th>
             <Table.Th>Slot</Table.Th>
+            <Table.Th>In storage since</Table.Th>
             <Table.Th>Barcode</Table.Th>
             <Table.Th>User</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>Locked</Table.Th>
-            <Table.Th>Pending measurements</Table.Th>
+            <Table.Th>Edges</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -275,6 +387,7 @@ function StoredTable({ rows }: { rows: StoredFrame[] }) {
             <Table.Tr key={r.barcode}>
               <Table.Td>{r.container}</Table.Td>
               <Table.Td>{r.slot}</Table.Td>
+              <Table.Td>{r.since ? formatDateTime(r.since) : "—"}</Table.Td>
               <Table.Td>
                 <Anchor component={Link} to={`/frames/${r.barcode}`} ff="monospace">
                   {r.barcode}
@@ -284,8 +397,10 @@ function StoredTable({ rows }: { rows: StoredFrame[] }) {
               <Table.Td>
                 <FrameStateBadge state={r.state} />
               </Table.Td>
-              <Table.Td>{r.locked ? "yes" : "no"}</Table.Td>
-              <Table.Td>{r.pending_measurements}</Table.Td>
+              <Table.Td>
+                <YesNoIcon value={r.locked} />
+              </Table.Td>
+              <Table.Td>{r.edges.join(", ") || "—"}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>

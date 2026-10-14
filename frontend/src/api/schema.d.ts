@@ -1337,6 +1337,8 @@ export interface components {
             container: number;
             /** Slot */
             slot: number;
+            /** Since */
+            since?: string | null;
         };
         /** StorageSlot */
         StorageSlot: {
@@ -1359,8 +1361,10 @@ export interface components {
             safe: boolean;
             /** Locked */
             locked: boolean;
-            /** Pending Measurements */
-            pending_measurements: number;
+            /** Since */
+            since: string | null;
+            /** Edges */
+            edges: string[];
         };
         /**
          * Technique

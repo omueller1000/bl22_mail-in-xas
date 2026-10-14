@@ -13,6 +13,7 @@ from pymongo import ASCENDING
 from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.db import Database
+from app.measurements.options import ELEMENTS, Edge
 
 COLLECTION = "measurements"
 
@@ -48,13 +49,29 @@ async def counts_by_position(db: Database, barcodes: list[str]) -> dict[str, dic
     return result
 
 
-async def pending_counts(db: Database, barcodes: list[str]) -> dict[str, int]:
-    """{barcode: number of pending measurements}."""
+async def edges_by_frame(db: Database, barcodes: list[str]) -> dict[str, list[str]]:
+    """{barcode: distinct "<element> <edge>" of all its measurements}, e.g. ["Cu K", "Ta L3"].
+
+    Sorted by atomic number, then edge (K, L1, L2, L3).
+    """
     pipeline = [
-        {"$match": {"frame": {"$in": barcodes}, "status": "pending"}},
-        {"$group": {"_id": "$frame", "n": {"$sum": 1}}},
+        {"$match": {"frame": {"$in": barcodes}}},
+        {"$group": {"_id": {"frame": "$frame", "element": "$element", "edge": "$edge"}}},
     ]
-    return {row["_id"]: row["n"] async for row in await db[COLLECTION].aggregate(pipeline)}
+    found: dict[str, list[tuple[str, str]]] = {}
+    async for row in await db[COLLECTION].aggregate(pipeline):
+        key = row["_id"]
+        found.setdefault(key["frame"], []).append((key["element"], key["edge"]))
+    edge_order = [e.value for e in Edge]
+    return {
+        frame: [
+            f"{element} {edge}"
+            for element, edge in sorted(
+                pairs, key=lambda p: (ELEMENTS.get(p[0], 999), edge_order.index(p[1]))
+            )
+        ]
+        for frame, pairs in found.items()
+    }
 
 
 async def delete_for_positions(

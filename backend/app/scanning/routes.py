@@ -205,7 +205,7 @@ async def move_to_internal_storage(
             {
                 "$set": {
                     "state": FrameState.INTERNAL_STORAGE.value,
-                    "storage": {"container": body.container, "slot": body.slot},
+                    "storage": {"container": body.container, "slot": body.slot, "since": now},
                     "updated_at": now,
                 },
                 "$push": {
@@ -268,7 +268,10 @@ class StoredFrame(BaseModel):
     owner: UserRef | None
     safe: bool
     locked: bool
-    pending_measurements: int
+    # When the frame was put into this slot (a release after a crash does not change it).
+    since: datetime | None
+    # Distinct "<element> <edge>" of all the frame's measurements, e.g. ["Cu K", "Ta L3"].
+    edges: list[str]
 
 
 @router.get("/storage/internal")
@@ -276,7 +279,7 @@ async def internal_storage(_: Operator, db: Db) -> list[StoredFrame]:
     """Frames occupying internal-storage slots (incl. scheduled/loaded ones), by position."""
     docs = await db[frames.COLLECTION].find({"storage.container": {"$exists": True}}).to_list()
     owners = await _owners(db, docs)
-    pending = await measurements.pending_counts(db, [d["_id"] for d in docs])
+    edges = await measurements.edges_by_frame(db, [d["_id"] for d in docs])
     rows = [
         StoredFrame(
             barcode=d["_id"],
@@ -286,7 +289,8 @@ async def internal_storage(_: Operator, db: Db) -> list[StoredFrame]:
             owner=user_ref(owners.get(d.get("owner_id"))),
             safe=bool(d.get("safety_declared")),
             locked=bool(d.get("locked")),
-            pending_measurements=pending.get(d["_id"], 0),
+            since=d["storage"].get("since"),
+            edges=edges.get(d["_id"], []),
         )
         for d in docs
     ]

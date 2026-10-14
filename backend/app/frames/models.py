@@ -46,6 +46,8 @@ class PlacedSample(BaseModel):
 class StorageLocation(BaseModel):
     container: int
     slot: int
+    # When the frame was put into the slot.
+    since: datetime | None = None
 
 
 class SafetyDeclaration(BaseModel):

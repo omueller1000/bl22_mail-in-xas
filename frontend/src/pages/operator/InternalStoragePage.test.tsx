@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +16,8 @@ const STORED: StoredFrame[] = [
     owner: { id: "u1", name: "Ada Test", orcid: "0000-0002-1825-0097" },
     safe: true,
     locked: true,
-    pending_measurements: 2,
+    since: "2026-10-13T14:05:00Z",
+    edges: ["Cu K", "Ta L3"],
   },
 ];
 
@@ -52,7 +53,7 @@ describe("InternalStoragePage", () => {
         json({ ...frame("internal_storage"), storage: { container: 0, slot: 3 } }),
     });
     renderWithProviders(<InternalStoragePage />);
-    expect(await screen.findByRole("button", { name: "Container 0 slot 0: AAAA-AAAA" })).toBeDisabled();
+    expect(await screen.findByLabelText("Container 0 slot 0: AAAA-AAAA")).toBeInTheDocument();
 
     await scan("CCCC-CCCC");
     expect(await screen.findByText("Received")).toBeInTheDocument();
@@ -76,11 +77,57 @@ describe("InternalStoragePage", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Store" })).not.toBeInTheDocument());
   });
 
-  it("lists stored frames with their slot", async () => {
+  it("lists stored frames with their slot and edges", async () => {
     mockApi({ "GET /storage/internal": () => json(STORED) });
     renderWithProviders(<InternalStoragePage />);
     const table = await screen.findByRole("table", { name: "Frames in internal storage" });
     expect(table).toHaveTextContent("AAAA-AAAA");
     expect(table).toHaveTextContent("Ada Test");
+    expect(table).toHaveTextContent("Cu K, Ta L3");
+    expect(table).toHaveTextContent("2026"); // in storage since
+    expect(within(table).getByLabelText("yes")).toBeInTheDocument(); // locked
+  });
+
+  it("moves a stored frame to external storage from its slot", async () => {
+    const fetchMock = mockApi({
+      "GET /storage/internal": () => json(STORED),
+      "POST /scans/apply": () =>
+        json([
+          {
+            barcode: "AAAA-AAAA",
+            current_state: "internal_storage",
+            owner: "Ada Test",
+            safe: true,
+            locked: true,
+            target_state: "external_storage",
+            problem: null,
+            warning: null,
+            moved: true,
+          },
+        ]),
+    });
+    renderWithProviders(<InternalStoragePage />);
+    await userEvent.click(await screen.findByRole("button", { name: "move AAAA-AAAA to external storage" }));
+
+    expect(await screen.findByText("AAAA-AAAA moved to external storage")).toBeInTheDocument();
+    const post = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "POST")!;
+    expect(await post.json()).toEqual({ action: "external_storage", barcodes: ["AAAA-AAAA"] });
+  });
+
+  it("releases a loaded frame back into its slot", async () => {
+    const fetchMock = mockApi({
+      "GET /storage/internal": () => json([{ ...STORED[0], state: "loaded" }]),
+      "POST /frames/AAAA-AAAA/release": () => json(frame("internal_storage")),
+    });
+    renderWithProviders(<InternalStoragePage />);
+    expect(screen.queryByRole("button", { name: /to external storage/ })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "release AAAA-AAAA back into its slot" }));
+    const dialog = await screen.findByRole("dialog", { name: "Release frame" });
+    expect(dialog).toHaveTextContent("container 0, slot 0");
+    expect(fetchMock.mock.calls.some(([r]) => r.url.endsWith("/release"))).toBe(false);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Release" }));
+
+    expect(await screen.findByText("AAAA-AAAA released back into its slot")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([r]) => r.url.endsWith("/frames/AAAA-AAAA/release"))).toBe(true);
   });
 });

@@ -14,7 +14,6 @@ import { notifications } from "@mantine/notifications";
 import {
   IconBan,
   IconBuildingWarehouse,
-  IconCheck,
   IconPackageImport,
   IconTruckReturn,
   IconX,
@@ -24,6 +23,7 @@ import { type ReactNode, useState } from "react";
 import type { ActionOutcome, ScanAction, ScannedFrame } from "../../api/client";
 import { lookupScan, useApplyScan } from "../../api/scanning";
 import { ScanInput } from "../../components/ScanInput";
+import { YesNoIcon } from "../../components/YesNoIcon";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
 
 const ACTIONS: { action: ScanAction; label: string; icon: ReactNode; color: string }[] = [
@@ -225,8 +225,8 @@ function ScannedTable({
                   </Text>
                 )}
               </Table.Td>
-              <Table.Td>{flag(f.current_state ? f.safe : null)}</Table.Td>
-              <Table.Td>{flag(f.current_state ? f.locked : null)}</Table.Td>
+              <Table.Td><YesNoIcon value={f.current_state ? f.safe : null} /></Table.Td>
+              <Table.Td><YesNoIcon value={f.current_state ? f.locked : null} /></Table.Td>
               <Table.Td>
                 <Group gap={4} wrap="nowrap">
                   {ACTIONS.map((a) => {
@@ -273,13 +273,4 @@ function ScannedTable({
 function hint(label: string, o: ActionOutcome): string {
   if (!o.target_state) return `${label}: ${o.problem ?? "not possible"}`;
   return `${label}${o.warning ? `. ${o.warning}` : ""}`;
-}
-
-function flag(value: boolean | null) {
-  if (value === null) return "—";
-  return value ? (
-    <IconCheck size={16} color="var(--mantine-color-green-6)" aria-label="yes" />
-  ) : (
-    <IconX size={16} color="var(--mantine-color-red-6)" aria-label="no" />
-  );
 }

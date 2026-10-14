@@ -181,7 +181,9 @@ async def test_move_to_internal_storage(client: AsyncClient, raw_db: Any) -> Non
     response = await store(client, code, 1, 7)
     assert response.status_code == 200, response.text
     assert response.json()["state"] == "internal_storage"
-    assert response.json()["storage"] == {"container": 1, "slot": 7}
+    storage = response.json()["storage"]
+    assert (storage["container"], storage["slot"]) == (1, 7)
+    assert storage["since"] is not None
 
 
 async def test_slot_must_be_free(client: AsyncClient, raw_db: Any) -> None:
@@ -223,10 +225,13 @@ async def test_release_returns_frame_to_its_slot(client: AsyncClient, raw_db: An
     await store(client, code, 1, 3)
     await raw_db.frames.update_one({"_id": code}, {"$set": {"state": "loaded"}})
 
+    stored_since = (await client.get(f"{API}/frames/{code}")).json()["storage"]["since"]
     response = await client.post(f"{API}/frames/{code}/release")
     assert response.status_code == 200
     assert response.json()["state"] == "internal_storage"
-    assert response.json()["storage"] == {"container": 1, "slot": 3}
+    storage = response.json()["storage"]
+    assert (storage["container"], storage["slot"]) == (1, 3)
+    assert storage["since"] == stored_since  # releasing does not restart the clock
     # Only scheduled or loaded frames can be released.
     assert (await client.post(f"{API}/frames/{code}/release")).status_code == 409
 
@@ -238,15 +243,20 @@ async def test_storage_overview(client: AsyncClient, raw_db: Any) -> None:
     await raw_db.frames.update_one({"_id": a}, {"$set": {"state": "scheduled"}})
     await raw_db.measurements.insert_many(
         [
-            {"frame": a, "position": "Left-A", "number": 1, "status": "pending"},
-            {"frame": a, "position": "Left-A", "number": 2, "status": "done"},
+            {"frame": a, "position": "Left-A", "number": 1, "element": "Ta", "edge": "L3"},
+            {"frame": a, "position": "Left-A", "number": 2, "element": "Cu", "edge": "K"},
+            {"frame": a, "position": "Left-B", "number": 1, "element": "Cu", "edge": "K"},
+            {"frame": a, "position": "Left-B", "number": 2, "element": "Ta", "edge": "L1"},
         ]
     )
 
     rows = (await client.get(f"{API}/storage/internal")).json()
     assert [(r["barcode"], r["container"], r["slot"]) for r in rows] == [(b, 0, 5), (a, 1, 0)]
     assert rows[1]["state"] == "scheduled"  # keeps its slot while scheduled
-    assert rows[1]["pending_measurements"] == 1
+    assert rows[0]["since"] is not None
+    # Each edge once, by atomic number and then K, L1, L2, L3.
+    assert rows[1]["edges"] == ["Cu K", "Ta L1", "Ta L3"]
+    assert rows[0]["edges"] == []
     assert rows[1]["owner"]["name"] == "Ada Test"
 
 
