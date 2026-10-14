@@ -1,5 +1,5 @@
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconChartLine } from "@tabler/icons-react";
+import { IconChartCovariate } from "@tabler/icons-react";
 import { Link } from "react-router";
 
 
@@ -17,7 +17,7 @@ export function DataLink({ barcode, sampleId }: { barcode: string; sampleId?: st
         size="sm"
         aria-label={`Data of ${barcode}`}
       >
-        <IconChartLine size={16} />
+        <IconChartCovariate size={16} />
       </ActionIcon>
     </Tooltip>
   );

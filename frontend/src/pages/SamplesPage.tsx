@@ -152,14 +152,11 @@ function SampleRow({ sample, onEdit }: { sample: Sample; onEdit: () => void }) {
       </Table.Td>
       <Table.Td>
         {sample.msds ? (
-          <Anchor href={msdsUrl(sample.id)} size="sm">
-            <Group gap={4} wrap="nowrap">
-              <IconFileTypePdf size={16} />
-              <Text size="sm" truncate maw={160}>
-                {sample.msds.filename}
-              </Text>
-            </Group>
-          </Anchor>
+          <Tooltip label="Download MSDS" withArrow>
+            <Anchor href={msdsUrl(sample.id)} aria-label={`MSDS of ${sample.name}`}>
+              <IconFileTypePdf size={18} />
+            </Anchor>
+          </Tooltip>
         ) : (
           <Text size="sm" c="dimmed">
             —

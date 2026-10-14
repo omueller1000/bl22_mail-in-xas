@@ -117,10 +117,13 @@ describe("SamplesPage", () => {
   });
 
   it("uploads an MSDS as a multipart file with the CSRF header", async () => {
+    let current = sample({});
     const fetchMock = mockApi({
-      "GET /samples": () => json([sample({})]),
-      "PUT /samples/s1/msds": () =>
-        json(sample({ msds: { filename: "sds.pdf", size: 9, uploaded_at: "2026-10-12T00:00:00Z" } })),
+      "GET /samples": () => json([current]),
+      "PUT /samples/s1/msds": () => {
+        current = sample({ msds: { filename: "sds.pdf", size: 9, uploaded_at: "2026-10-12T00:00:00Z" } });
+        return json(current);
+      },
     });
     const { container } = renderWithProviders(<SamplesPage />);
     await screen.findByText("Fe2O3");
@@ -137,6 +140,10 @@ describe("SamplesPage", () => {
     const body = await put.text();
     expect(body).toContain('name="file"');
     expect(body).toContain("Content-Type: application/pdf");
+
+    // The table shows that there is an MSDS (a PDF icon), not its file name.
+    expect(await screen.findByRole("link", { name: "MSDS of Fe2O3" })).toBeInTheDocument();
+    expect(screen.queryByText("sds.pdf")).not.toBeInTheDocument();
   });
 
   it("refuses MSDS files of 1 MB or more before uploading", async () => {

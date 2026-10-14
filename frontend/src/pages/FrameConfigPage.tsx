@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconChartLine, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconChartCovariate, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 
@@ -92,7 +92,7 @@ export function FrameConfigPage() {
             to={`/frames/${frame.barcode}/data`}
             variant="light"
             size="xs"
-            leftSection={<IconChartLine size={16} />}
+            leftSection={<IconChartCovariate size={16} />}
           >
             Data
           </Button>
