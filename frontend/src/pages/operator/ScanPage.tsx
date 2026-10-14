@@ -2,7 +2,6 @@ import {
   ActionIcon,
   Button,
   Card,
-  Grid,
   Group,
   Modal,
   Stack,
@@ -22,36 +21,47 @@ import {
 } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 
-import type { ActionOutcome, ScanAction, ScannedFrame, ScanResult } from "../../api/client";
+import type { ActionOutcome, ScanAction, ScannedFrame } from "../../api/client";
 import { lookupScan, useApplyScan } from "../../api/scanning";
 import { ScanInput } from "../../components/ScanInput";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
-import { FRAME_STATE_LABELS, frameStateColor } from "../../materials/labels";
 
 const ACTIONS: { action: ScanAction; label: string; icon: ReactNode; color: string }[] = [
-  { action: "receive", label: "Receive", icon: <IconPackageImport size={18} />, color: "blue" },
+  {
+    action: "receive",
+    label: "mark as received",
+    icon: <IconPackageImport size={18} />,
+    color: "blue"
+  },
   {
     action: "external_storage",
-    label: "External storage",
+    label: "move to external storage",
     icon: <IconBuildingWarehouse size={18} />,
     color: "teal",
   },
-  { action: "return", label: "Return to user", icon: <IconTruckReturn size={18} />, color: "grape" },
-  { action: "void", label: "Void", icon: <IconBan size={18} />, color: "red" },
+  {
+    action: "return",
+    label: "mark as returned to user",
+    icon: <IconTruckReturn size={18} />,
+    color: "grape"
+  },
+  {
+    action: "void",
+    label: "void frame",
+    icon: <IconBan size={18} />,
+    color: "red"
+  },
 ];
 
-interface Done extends ScanResult {
-  label: string;
-}
-
 /**
- * Scanning at the facility (requirements §9): scanned frames collect in the left table, each
- * with one button per action. A button is enabled only if that move is possible; its tooltip
- * says what will happen. Moved frames go to the right table.
+ * Scanning at the facility (requirements §9): scanned frames collect in one table, each with one
+ * button per action. A button is enabled only if that move is possible. After an action the row
+ * stays, shows the frame's new status and the action taken, and is marked as handled.
  */
 export function ScanPage() {
   const [scanned, setScanned] = useState<ScannedFrame[]>([]);
-  const [done, setDone] = useState<Done[]>([]);
+  // Barcode -> label of the last action taken on it in this session.
+  const [lastAction, setLastAction] = useState<Record<string, string>>({});
   const [confirmVoid, setConfirmVoid] = useState<string | null>(null);
   const apply = useApplyScan();
   const fail = (err: Error) => notifications.show({ color: "red", message: err.message });
@@ -80,54 +90,56 @@ export function ScanPage() {
         onSuccess: ([result]) => {
           const label = ACTIONS.find((a) => a.action === action)!.label;
           if (result?.moved) {
-            setDone((rows) => [{ ...result, label }, ...rows]);
-            setScanned((rows) => rows.filter((f) => f.barcode !== barcode));
+            setLastAction((last) => ({ ...last, [barcode]: label }));
+            notifications.show({ color: "green", message: `${barcode}: ${label}` });
           } else {
             fail(new Error(`${barcode}: ${result?.problem ?? "could not be moved"}`));
-            void lookup(scanned.map((f) => f.barcode)); // the frame changed meanwhile
           }
+          // Refresh the rows: new status and the actions now possible.
+          void lookup(scanned.map((f) => f.barcode));
         },
         onError: fail,
       },
     );
 
+  const remove = (barcode: string) => {
+    setScanned((rows) => rows.filter((f) => f.barcode !== barcode));
+    setLastAction((last) => {
+      const next = { ...last };
+      delete next[barcode];
+      return next;
+    });
+  };
+
   return (
     <Stack>
       <Title order={2}>Scan frames</Title>
-      <Grid gap="lg">
-        <Grid.Col span={{ base: 12, lg: 7 }}>
-          <Card withBorder>
-            <Stack>
-              <Group justify="space-between" align="flex-end">
-                <ScanInput onScan={onScan} disabled={apply.isPending} />
-                <Button
-                  variant="default"
-                  disabled={scanned.length === 0}
-                  onClick={() => setScanned([])}
-                >
-                  Clear
-                </Button>
-              </Group>
-              <ScannedTable
-                rows={scanned}
-                busy={apply.isPending}
-                onAction={(barcode, action) =>
-                  action === "void" ? setConfirmVoid(barcode) : run(barcode, action)
-                }
-                onRemove={(code) => setScanned((rows) => rows.filter((f) => f.barcode !== code))}
-              />
-            </Stack>
-          </Card>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 5 }}>
-          <Card withBorder>
-            <Text fw={600} mb="xs">
-              Done ({done.length})
-            </Text>
-            <DoneTable rows={done} />
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <Card withBorder>
+        <Stack>
+          <Group justify="space-between" align="flex-end">
+            <ScanInput onScan={onScan} disabled={apply.isPending} />
+            <Button
+              variant="default"
+              disabled={scanned.length === 0}
+              onClick={() => {
+                setScanned([]);
+                setLastAction({});
+              }}
+            >
+              Clear
+            </Button>
+          </Group>
+          <ScannedTable
+            rows={scanned}
+            lastAction={lastAction}
+            busy={apply.isPending}
+            onAction={(barcode, action) =>
+              action === "void" ? setConfirmVoid(barcode) : run(barcode, action)
+            }
+            onRemove={remove}
+          />
+        </Stack>
+      </Card>
       <Modal opened={confirmVoid !== null} onClose={() => setConfirmVoid(null)} title="Void frame">
         <Stack>
           <Text size="sm">
@@ -157,11 +169,13 @@ export function ScanPage() {
 
 function ScannedTable({
   rows,
+  lastAction,
   busy,
   onAction,
   onRemove,
 }: {
   rows: ScannedFrame[];
+  lastAction: Record<string, string>;
   busy: boolean;
   onAction: (barcode: string, action: ScanAction) => void;
   onRemove: (barcode: string) => void;
@@ -174,16 +188,17 @@ function ScannedTable({
     );
   }
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={760}>
       <Table aria-label="Scanned frames">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Barcode</Table.Th>
             <Table.Th>User</Table.Th>
-            <Table.Th>Now</Table.Th>
+            <Table.Th>Status</Table.Th>
             <Table.Th>Safe</Table.Th>
             <Table.Th>Locked</Table.Th>
             <Table.Th>Action</Table.Th>
+            <Table.Th>Last action</Table.Th>
             <Table.Th w={30} />
           </Table.Tr>
         </Table.Thead>
@@ -191,7 +206,13 @@ function ScannedTable({
           {rows.map((f) => (
             <Table.Tr
               key={f.barcode}
-              bg={f.current_state ? undefined : "var(--mantine-color-red-light)"}
+              bg={
+                !f.current_state
+                  ? "var(--mantine-color-red-light)"
+                  : lastAction[f.barcode]
+                    ? "var(--mantine-color-green-light)"
+                    : undefined
+              }
             >
               <Table.Td ff="monospace">{f.barcode}</Table.Td>
               <Table.Td>{f.owner ?? "—"}</Table.Td>
@@ -227,6 +248,9 @@ function ScannedTable({
                 </Group>
               </Table.Td>
               <Table.Td>
+                <Text size="sm">{lastAction[f.barcode] ?? ""}</Text>
+              </Table.Td>
+              <Table.Td>
                 <ActionIcon
                   variant="subtle"
                   color="gray"
@@ -245,54 +269,10 @@ function ScannedTable({
   );
 }
 
-/** "Receive → Received, on hold. Not declared safe: put on hold" or "Receive: <reason>". */
+/** The action's name (plus a warning if any), or "<name>: <reason>" when not possible. */
 function hint(label: string, o: ActionOutcome): string {
   if (!o.target_state) return `${label}: ${o.problem ?? "not possible"}`;
-  return `${label} → ${FRAME_STATE_LABELS[o.target_state]}${o.warning ? `. ${o.warning}` : ""}`;
-}
-
-function DoneTable({ rows }: { rows: Done[] }) {
-  if (rows.length === 0) {
-    return (
-      <Text size="sm" c="dimmed">
-        Frames you move appear here.
-      </Text>
-    );
-  }
-  return (
-    <Table aria-label="Done">
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Barcode</Table.Th>
-          <Table.Th>User</Table.Th>
-          <Table.Th>Action</Table.Th>
-          <Table.Th>New state</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {rows.map((r, i) => (
-          <Table.Tr key={`${r.barcode}-${i}`}>
-            <Table.Td ff="monospace">{r.barcode}</Table.Td>
-            <Table.Td>{r.owner ?? "—"}</Table.Td>
-            <Table.Td>{r.label}</Table.Td>
-            <Table.Td>
-              {r.target_state && (
-                <FrameStateBadge
-                  state={r.target_state}
-                  color={frameStateColor(r.target_state) ?? (r.warning ? "yellow" : "green")}
-                />
-              )}
-              {r.warning && (
-                <Text size="xs" c="dimmed">
-                  {r.warning}
-                </Text>
-              )}
-            </Table.Td>
-          </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
-  );
+  return `${label}${o.warning ? `. ${o.warning}` : ""}`;
 }
 
 function flag(value: boolean | null) {

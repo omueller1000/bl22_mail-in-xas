@@ -64,14 +64,29 @@ function applied(barcode: string, action: string): ScanResult {
 }
 
 function mockScanApi() {
+  const moved: Record<string, ScanResult> = {};
   return mockApi({
     "POST /scans/lookup": async (request) => {
       const body = (await request.clone().json()) as { barcodes: string[] };
-      return json(body.barcodes.map(lookup));
+      return json(
+        body.barcodes.map((code) => {
+          const frame = lookup(code);
+          const after = moved[code];
+          if (!after) return frame;
+          // After a move: new status, and no further action possible (enough for these tests).
+          return {
+            ...frame,
+            current_state: after.target_state,
+            actions: frame.actions.map((x) => ({ ...x, target_state: null, problem: "Done" })),
+          };
+        }),
+      );
     },
     "POST /scans/apply": async (request) => {
       const body = (await request.clone().json()) as { action: string; barcodes: string[] };
-      return json(body.barcodes.map((code) => applied(code, body.action)));
+      const results = body.barcodes.map((code) => applied(code, body.action));
+      for (const r of results) moved[r.barcode] = r;
+      return json(results);
     },
   });
 }
@@ -90,26 +105,38 @@ describe("ScanPage", () => {
     await scan("BBBB-BBBB");
     await within(await screen.findByRole("table", { name: "Scanned frames" })).findByText("Unknown barcode");
 
-    expect(screen.getByRole("button", { name: "Receive AAAA-AAAA" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "External storage AAAA-AAAA" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Return to user AAAA-AAAA" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Void AAAA-AAAA" })).toBeEnabled();
-    for (const label of ["Receive", "External storage", "Return to user", "Void"]) {
+    expect(screen.getByRole("button", { name: "mark as received AAAA-AAAA" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "move to external storage AAAA-AAAA" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "mark as returned to user AAAA-AAAA" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "void frame AAAA-AAAA" })).toBeEnabled();
+    for (const label of [
+      "mark as received",
+      "move to external storage",
+      "mark as returned to user",
+      "void frame",
+    ]) {
       expect(screen.getByRole("button", { name: `${label} BBBB-BBBB` })).toBeDisabled();
     }
   });
 
-  it("moves a frame with its action button into the done table", async () => {
+  it("keeps a moved frame in the table with its new status and the action taken", async () => {
     const fetchMock = mockScanApi();
     renderWithProviders(<ScanPage />);
     await scan("AAAA-AAAA");
+    await scan("BBBB-BBBB");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Receive AAAA-AAAA" }));
+    await userEvent.click(await screen.findByRole("button", { name: "mark as received AAAA-AAAA" }));
 
-    const done = await screen.findByRole("table", { name: "Done" });
-    expect(within(done).getByText("AAAA-AAAA")).toBeInTheDocument();
-    expect(within(done).getByText("Not locked")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("table", { name: "Scanned frames" })).not.toBeInTheDocument());
+    const row = await waitFor(() => {
+      const r = within(scannedTable()).getByText("AAAA-AAAA").closest("tr")!;
+      expect(r).toHaveTextContent("Received");
+      return r;
+    });
+    expect(row).toHaveTextContent("mark as received"); // last action
+    // The untouched row has no last action.
+    expect(within(scannedTable()).getByText("BBBB-BBBB").closest("tr")).not.toHaveTextContent(
+      "mark as received",
+    );
 
     const apply = fetchMock.mock.calls.map(([r]) => r).find((r) => r.url.endsWith("/scans/apply"))!;
     expect(await apply.json()).toEqual({ action: "receive", barcodes: ["AAAA-AAAA"] });
@@ -120,14 +147,17 @@ describe("ScanPage", () => {
     renderWithProviders(<ScanPage />);
     await scan("AAAA-AAAA");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Void AAAA-AAAA" }));
+    await userEvent.click(await screen.findByRole("button", { name: "void frame AAAA-AAAA" }));
     const dialog = await screen.findByRole("dialog", { name: "Void frame" });
     expect(fetchMock.mock.calls.some(([r]) => r.url.endsWith("/scans/apply"))).toBe(false);
 
     await userEvent.click(within(dialog).getByRole("button", { name: "Void" }));
-    const done = await screen.findByRole("table", { name: "Done" });
-    // Action column and new state
-    expect(within(done).getAllByText("Void")).toHaveLength(2);
+    await waitFor(() =>
+      expect(within(scannedTable()).getByText("AAAA-AAAA").closest("tr")).toHaveTextContent(
+        "void frame",
+      ),
+    );
+    expect(within(scannedTable()).getByText("Void")).toBeInTheDocument(); // new status
   });
 
   it("removes a scanned frame without acting on it", async () => {

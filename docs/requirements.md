@@ -329,15 +329,16 @@ Similar to v1's *Create* page:
 
 Barcode scanners are handheld devices that emulate a keyboard: a scan types the code followed by Enter into a focused input field.
 
-### 9.1 Group scan pages (two tables)
+### 9.1 Scan frames page (one table, per-frame actions)
 
-Used for: **issue barcodes** (fulfilling a request), **ship to user**, **receive**, **to external storage**, **return to user**, **void**.
+Used for: **receive**, **to external storage**, **return to user**, **void**. (Issuing barcodes and shipping to users have their own pages, §7 and §9.3.)
 
-- **Left table:** scanned codes with their current state (Receive mode also shows the lock and safety flags; rows with a missing flag are highlighted).
-- The operator clicks the **action button**: all rows that can make the transition move to the **right table** with their new state.
-- Rows whose transition is not allowed stay in the left table, highlighted with the reason.
-- Receive mode: rows without safety declaration move as `received_on_hold`; rows that are not locked move as `received` with a warning.
-- Duplicate scans of the same code are ignored.
+- Scanned codes collect in **one table**: barcode, user, current status, safety and lock flags.
+- Each row has **one button per action**. A button is enabled only if that move is possible for the frame; its tooltip names the action, adds a warning if any (e.g. not declared safe: put on hold; not locked), or explains why the move is not possible.
+- Clicking moves that one frame. **Void** asks for confirmation first (it cannot be undone).
+- After an action the row **stays** in the table: it shows the frame's new status, the **last action** taken, and is marked as handled (green background), so further actions on the same frame need no rescan.
+- Receive: frames without safety declaration become `received_on_hold`; frames that are not locked become `received` with a warning.
+- Unknown barcodes are highlighted. Duplicate scans of the same code are ignored. Rows can be removed individually or all at once (Clear).
 
 ### 9.2 Move to internal storage (single frame)
 
