@@ -28,6 +28,8 @@ export type ScannedFrame = Schemas["ScannedFrame"];
 export type ActionOutcome = Schemas["ActionOutcome"];
 export type StoredFrame = Schemas["StoredFrame"];
 export type FrameWarning = Schemas["FrameWarning"];
+export type ServiceClient = Schemas["ServiceClient"];
+export type ApiKey = Schemas["ApiKey"];
 
 /** Absolute API base, e.g. http://host/mail-in-xas/api (prod) or .../mail-in-xas/dev/api (dev). */
 export const API_BASE_URL = new URL(`${import.meta.env.BASE_URL}api`, window.location.origin)

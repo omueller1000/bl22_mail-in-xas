@@ -10,7 +10,7 @@ Requirements: [docs/requirements.md](docs/requirements.md)
 |---|---|
 | `backend/` | FastAPI app (Python 3.12, MongoDB) |
 | `frontend/` | Vite + React + TypeScript, Mantine UI, TanStack Query |
-| `tools/` | Development helpers, e.g. a fake control software (not yet created) |
+| `tools/` | Development helpers: `fake_instrument.py` (simulates the control software) |
 | `deploy/` | nginx and systemd configuration (not yet created) |
 | `docs/` | Requirements and design notes |
 
@@ -65,6 +65,21 @@ The dev server forwards `/mail-in-xas/api` to the backend on port 8010 (override
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | ESLint |
 | `npm run build` / `npm run build:dev` | Production build for `/mail-in-xas/` or `/mail-in-xas/dev/` into `dist/` |
+
+## Fake control software (instrument API)
+
+`tools/fake_instrument.py` uses the instrument API like the beamline control software: it lists
+the queue and "measures" a frame by uploading sweeps from legacy BL22 ASCII files. Create a
+service client and an API key on the Admin → Service clients page first.
+
+```bash
+cd backend
+export HT_XAS_INSTRUMENT_KEY=htxas_...        # the key, shown once when created
+uv run python ../tools/fake_instrument.py queue
+uv run python ../tools/fake_instrument.py run ABCD-EFGH path/to/sweep-files
+```
+
+Real measurement files for testing go into `testdata-private/` (git-ignored, never committed).
 
 ## Local ports
 

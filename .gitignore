@@ -23,3 +23,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Real measurement data for local testing; never committed (public repo)
+testdata-private/

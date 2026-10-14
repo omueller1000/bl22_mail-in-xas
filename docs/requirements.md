@@ -402,9 +402,11 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Upload / replace processed data of a sweep | `PUT /instrument/measurements/{id}/sweeps/{batch}/{sweep}/processed` |
 
 Upload rules:
-- The control software sends `batch_no` and `sweep_no` with each raw upload.
+- The control software sends `batch_no` and `sweep_no` with each raw upload; it chooses them (the frame endpoint reports each measurement's last batch and sweep). A **re-measure** sets the status back to `pending` (API only for now); the re-run then uses the next batch number and continues the sweep numbers.
 - `(measurement, batch_no, sweep_no)` must be unique → a retried upload returns a conflict instead of creating a duplicate.
-- `sweep_no` is a running number across batches, **1…999** per measurement; uploads above 999 are rejected.
+- `batch_no` and `sweep_no` are **1…999**; a `sweep_no` exists only once per measurement (across batches).
+- The backend copies frame, position, sample and owner from the measurement into each sweep (never from the upload) and stores a snapshot of the measurement's settings, so data and references stay consistent.
+- Requests are limited to 12 MB (a sweep is typically ~1 MB, at most ~5 MB).
 - Batches may contain different numbers of sweeps.
 - Raw data is immutable: no endpoint updates or deletes it.
 - Processed data for a sweep can be re-uploaded at any time and **replaces** the previous version.

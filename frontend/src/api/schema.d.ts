@@ -596,6 +596,197 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Clients */
+        get: operations["list_clients"];
+        put?: never;
+        /** Create Client */
+        post: operations["create_client"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-clients/{client_id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Key */
+        post: operations["create_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-clients/{client_id}/keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Key */
+        delete: operations["revoke_key"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/frames/{barcode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Instrument Frame
+         * @description Everything to measure on one frame.
+         */
+        get: operations["instrument_frame"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/storage/internal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Instrument Storage
+         * @description All frames occupying internal-storage slots (incl. scheduled and loaded ones).
+         */
+        get: operations["instrument_storage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Instrument Queue
+         * @description Locked frames in internal storage that have pending measurements.
+         *
+         *     The scheduler of the control software decides what to measure when.
+         */
+        get: operations["instrument_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/frames/{barcode}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Instrument Set Frame State
+         * @description Scheduled -> loaded -> back to internal storage (the frame keeps its slot).
+         */
+        post: operations["instrument_set_frame_state"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/measurements/{measurement_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Instrument Set Status */
+        put: operations["instrument_set_status"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/measurements/{measurement_id}/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Sweep
+         * @description Store one raw sweep. A sweep number exists only once per measurement (1-999).
+         */
+        post: operations["upload_sweep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument/measurements/{measurement_id}/sweeps/{batch_no}/{sweep_no}/processed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload Processed
+         * @description Store (or replace) the processed result of an uploaded sweep.
+         */
+        put: operations["upload_processed"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/material-requests": {
         parameters: {
             query?: never;
@@ -794,6 +985,24 @@ export interface components {
             /** Country */
             country: string;
         };
+        /** ApiKey */
+        ApiKey: {
+            /** Id */
+            id: string;
+            /** Prefix */
+            prefix: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+        };
         /** ArchiveUpdate */
         ArchiveUpdate: {
             /** Archived */
@@ -813,6 +1022,30 @@ export interface components {
         Body_upload_msds: {
             /** File */
             file: string;
+        };
+        /** Channel */
+        Channel: {
+            /** Name */
+            name: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /** Values */
+            values: number[];
+        };
+        /** ClientCreate */
+        ClientCreate: {
+            /** Name */
+            name: string;
+        };
+        /** Curve */
+        Curve: {
+            /** X */
+            x: number[];
+            /** Y */
+            y: number[];
         };
         /** DeclareSafe */
         DeclareSafe: {
@@ -927,6 +1160,52 @@ export interface components {
             environment: string;
             /** Version */
             version: string;
+        };
+        /** InstrumentFrame */
+        InstrumentFrame: {
+            /** Barcode */
+            barcode: string;
+            state: components["schemas"]["FrameState"];
+            /** Locked */
+            locked: boolean;
+            /** Safe */
+            safe: boolean;
+            storage: components["schemas"]["StorageLocation"] | null;
+            /** Owner */
+            owner: string | null;
+            /** Positions */
+            positions: components["schemas"]["InstrumentPosition"][];
+        };
+        /** InstrumentMeasurement */
+        InstrumentMeasurement: {
+            /** Id */
+            id: string;
+            /** Number */
+            number: number;
+            technique: components["schemas"]["Technique"];
+            /** Element */
+            element: string;
+            edge: components["schemas"]["Edge"];
+            detection: components["schemas"]["Detection"];
+            beam: components["schemas"]["Beam"];
+            status: components["schemas"]["MeasurementStatus"];
+            /** Error Message */
+            error_message: string | null;
+            /** Last Batch */
+            last_batch: number | null;
+            /** Last Sweep */
+            last_sweep: number | null;
+        };
+        /** InstrumentPosition */
+        InstrumentPosition: {
+            /** Position */
+            position: string;
+            /** Sample Id */
+            sample_id: string;
+            /** Sample Name */
+            sample_name: string;
+            /** Measurements */
+            measurements: components["schemas"]["InstrumentMeasurement"][];
         };
         /** IssueBarcodes */
         IssueBarcodes: {
@@ -1070,6 +1349,15 @@ export interface components {
              */
             uploaded_at: string;
         };
+        /**
+         * NewKey
+         * @description Returned once when a key is created.
+         */
+        NewKey: {
+            /** Key */
+            key: string;
+            info: components["schemas"]["ApiKey"];
+        };
         /** NoteUpdate */
         NoteUpdate: {
             /** Version */
@@ -1138,6 +1426,21 @@ export interface components {
             version: number;
             /** Sample Id */
             sample_id: string;
+        };
+        /**
+         * ProcessedUpload
+         * @description Processed result of one sweep; uploading again replaces the previous version.
+         */
+        ProcessedUpload: {
+            /**
+             * Metadata
+             * @default {}
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            mu: components["schemas"]["Curve"];
+            chi?: components["schemas"]["Curve"] | null;
         };
         /**
          * Profile
@@ -1320,6 +1623,22 @@ export interface components {
             /** Actions */
             actions: components["schemas"]["ActionOutcome"][];
         };
+        /** ServiceClient */
+        ServiceClient: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Keys */
+            keys: components["schemas"]["ApiKey"][];
+        };
         /** ShippingGroup */
         ShippingGroup: {
             user: components["schemas"]["Recipient"];
@@ -1331,6 +1650,20 @@ export interface components {
          * @enum {string}
          */
         Side: "left" | "right";
+        /** StateChange */
+        StateChange: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "scheduled" | "loaded" | "internal_storage";
+        };
+        /** StatusChange */
+        StatusChange: {
+            status: components["schemas"]["MeasurementStatus"];
+            /** Error Message */
+            error_message?: string | null;
+        };
         /** StorageLocation */
         StorageLocation: {
             /** Container */
@@ -1365,6 +1698,65 @@ export interface components {
             since: string | null;
             /** Edges */
             edges: string[];
+        };
+        /** StoredFrameSummary */
+        StoredFrameSummary: {
+            /** Barcode */
+            barcode: string;
+            /** Container */
+            container: number;
+            /** Slot */
+            slot: number;
+            state: components["schemas"]["FrameState"];
+            /** Locked */
+            locked: boolean;
+        };
+        /** SweepInfo */
+        SweepInfo: {
+            /** Id */
+            id: string;
+            /** Measurement Id */
+            measurement_id: string;
+            /** Frame */
+            frame: string;
+            /** Position */
+            position: string;
+            /** Number */
+            number: number;
+            /** Batch No */
+            batch_no: number;
+            /** Sweep No */
+            sweep_no: number;
+            /** Points */
+            points: number;
+            /** Channels */
+            channels: string[];
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Has Processed */
+            has_processed: boolean;
+        };
+        /**
+         * SweepUpload
+         * @description One raw sweep as sent by the control software after measuring it.
+         */
+        SweepUpload: {
+            /** Batch No */
+            batch_no: number;
+            /** Sweep No */
+            sweep_no: number;
+            /**
+             * Metadata
+             * @default {}
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Channels */
+            channels: components["schemas"]["Channel"][];
         };
         /**
          * Technique
@@ -2510,6 +2902,367 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FrameWarning"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_clients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceClient"][];
+                };
+            };
+        };
+    };
+    create_client: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewKey"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKey"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    instrument_frame: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentFrame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    instrument_storage: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredFrameSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    instrument_queue: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentFrame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    instrument_set_frame_state: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StateChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentFrame"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    instrument_set_status: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                measurement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentMeasurement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_sweep: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                measurement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SweepUpload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweepInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_processed: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                measurement_id: string;
+                batch_no: number;
+                sweep_no: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessedUpload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweepInfo"];
                 };
             };
             /** @description Validation Error */

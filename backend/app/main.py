@@ -17,11 +17,16 @@ from app.auth import orcid, sessions
 from app.auth import routes as auth_routes
 from app.config import Settings, get_settings
 from app.csrf import csrf_middleware
+from app.data import repository as data
 from app.db import Database, create_client
 from app.frames import config_routes as frame_config_routes
 from app.frames import repository as frames
 from app.frames import routes as frames_routes
 from app.frames import safety_routes
+from app.instrument import admin_routes as service_client_routes
+from app.instrument import keys as api_keys
+from app.instrument import routes as instrument_routes
+from app.limits import limit_body_size
 from app.material_requests import routes as material_requests_routes
 from app.measurements import repository as measurements
 from app.measurements import routes as measurements_routes
@@ -67,6 +72,7 @@ def create_app(
     )
     app.state.settings = settings
     app.middleware("http")(csrf_middleware(prefix))
+    app.middleware("http")(limit_body_size)
 
     app.include_router(health.router, prefix=prefix)
     app.include_router(auth_routes.router, prefix=prefix)
@@ -79,6 +85,8 @@ def create_app(
     app.include_router(safety_routes.router, prefix=prefix)
     app.include_router(measurements_routes.router, prefix=prefix)
     app.include_router(scanning_routes.router, prefix=prefix)
+    app.include_router(service_client_routes.router, prefix=prefix)
+    app.include_router(instrument_routes.router, prefix=prefix)
     app.include_router(material_requests_routes.router, prefix=prefix)
     app.include_router(samples_routes.router, prefix=prefix)
 
@@ -96,6 +104,8 @@ async def _ensure_indexes(db: Database) -> None:
         await samples.ensure_indexes(db)
         await measurements.ensure_indexes(db)
         await scanning_routes.ensure_indexes(db)
+        await data.ensure_indexes(db)
+        await api_keys.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

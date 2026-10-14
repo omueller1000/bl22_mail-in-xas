@@ -13,6 +13,7 @@ from gridfs import AsyncGridFSBucket
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from pymongo.asynchronous.client_session import AsyncClientSession
 
+from app.data import repository as data
 from app.db import Database
 from app.frames import repository as frames
 from app.frames.states import TERMINAL
@@ -93,8 +94,7 @@ def blocks_deletion(frame: dict[str, Any]) -> bool:
 
 
 async def has_data(db: Database, sample_id: ObjectId) -> bool:
-    # Measurement data arrives with the instrument API (M5); until then no sample has data.
-    return False
+    return await data.sample_has_data(db, sample_id)
 
 
 def to_model(doc: dict[str, Any], placed_on: list[dict[str, Any]], with_data: bool) -> Sample:

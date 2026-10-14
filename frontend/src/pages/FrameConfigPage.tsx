@@ -311,9 +311,17 @@ function PositionsCard({
                     <Text size="sm" style={{ flex: 1 }}>
                       {describeMeasurement(m, options)}
                     </Text>
-                    <Badge size="sm" variant="light" color={MEASUREMENT_STATUS[m.status].color}>
-                      {MEASUREMENT_STATUS[m.status].label}
-                    </Badge>
+                    <Tooltip
+                      label={m.error_message}
+                      disabled={!m.error_message}
+                      withArrow
+                      multiline
+                      maw={280}
+                    >
+                      <Badge size="sm" variant="light" color={MEASUREMENT_STATUS[m.status].color}>
+                        {MEASUREMENT_STATUS[m.status].label}
+                      </Badge>
+                    </Tooltip>
                     {measurementsEditable && (
                       <>
                         <Tooltip label="Edit measurement" withArrow>

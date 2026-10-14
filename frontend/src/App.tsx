@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router/dom";
 import { RequireRole, RequireUser } from "./auth/guards";
 import { Layout } from "./layout/Layout";
 import { AccountPage } from "./pages/AccountPage";
+import { ServiceClientsPage } from "./pages/admin/ServiceClientsPage";
 import { FrameConfigPage } from "./pages/FrameConfigPage";
 import { FramesPage } from "./pages/FramesPage";
 import { HomePage } from "./pages/HomePage";
@@ -53,6 +54,10 @@ const router = createBrowserRouter(
                 { path: "operator/scan", element: <ScanPage /> },
                 { path: "operator/storage", element: <InternalStoragePage /> },
               ],
+            },
+            {
+              element: <RequireRole role="admin" />,
+              children: [{ path: "admin/service-clients", element: <ServiceClientsPage /> }],
             },
           ],
         },

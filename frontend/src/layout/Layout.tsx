@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/operator/storage", label: "Internal storage", role: "operator", section: "Operator" },
   { to: "/operator/frames", label: "All frames", role: "operator", section: "Operator" },
   { to: "/users", label: "Users", role: "operator", section: "Operator" },
+  { to: "/admin/service-clients", label: "Service clients", role: "admin", section: "Admin" },
 ];
 
 export function Layout() {
