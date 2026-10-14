@@ -77,6 +77,21 @@ describe("InternalStoragePage", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Store" })).not.toBeInTheDocument());
   });
 
+  it("marks unlocked frames in the grid as a warning", async () => {
+    mockApi({
+      "GET /storage/internal": () =>
+        json([
+          STORED[0],
+          { ...STORED[0], barcode: "BBBB-BBBB", slot: 1, locked: false },
+        ]),
+    });
+    renderWithProviders(<InternalStoragePage />);
+    const unlocked = await screen.findByLabelText("Container 0 slot 1: BBBB-BBBB");
+    expect(within(unlocked).getByText("not locked")).toBeInTheDocument();
+    const locked = screen.getByLabelText("Container 0 slot 0: AAAA-AAAA");
+    expect(within(locked).queryByText("not locked")).not.toBeInTheDocument();
+  });
+
   it("lists stored frames with their slot and edges", async () => {
     mockApi({ "GET /storage/internal": () => json(STORED) });
     renderWithProviders(<InternalStoragePage />);

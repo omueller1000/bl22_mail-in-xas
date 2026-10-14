@@ -217,6 +217,8 @@ function OccupancyGrid({
               const frame = occupant(c, s);
               const isSelected = selected?.container === c && selected.slot === s;
               const atBeamline = frame && frame.state !== "internal_storage";
+              // Warning: the scheduler skips unlocked frames, so they will not be measured.
+              const notLocked = frame && !atBeamline && !frame.locked;
               const cellStyle = {
                 borderRadius: 4,
                 background: isSelected
@@ -224,7 +226,9 @@ function OccupancyGrid({
                   : frame
                     ? atBeamline
                       ? `var(--mantine-color-${IN_PROGRESS_COLOR}-light)`
-                      : "var(--mantine-primary-color-light)"
+                      : notLocked
+                        ? "var(--mantine-color-yellow-light)"
+                        : "var(--mantine-primary-color-light)"
                     : undefined,
                 border: "1px solid var(--mantine-color-default-border)",
               };
@@ -260,6 +264,13 @@ function OccupancyGrid({
                       <Text size="xs" ff="monospace">
                         {frame.barcode}
                       </Text>
+                      {notLocked && (
+                        <Tooltip label="Not locked: will not be measured until locked" withArrow>
+                          <Text size="xs" fw={600} c="var(--mantine-color-yellow-light-color)">
+                            not locked
+                          </Text>
+                        </Tooltip>
+                      )}
                       {atBeamline && (
                         <Text size="xs" c="dimmed">
                           {FRAME_STATE_LABELS[frame.state]}
