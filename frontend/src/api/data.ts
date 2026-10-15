@@ -103,7 +103,8 @@ export function useProcessed(sweeps: SweepInfo[], spectrum: string | undefined) 
         }),
       ),
     enabled: Boolean(first && spectrum),
-    staleTime,
+    // An admin can change the processing parameters at any time; recomputing is cheap.
+    staleTime: 30_000,
   });
 }
 

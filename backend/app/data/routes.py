@@ -14,9 +14,8 @@ from app.data import spectra
 from app.data.export import FrameZip
 from app.data.models import SweepInfo, sweep_info
 from app.measurements.routes import load_frame
-from app.processing import pipeline
+from app.processing import pipeline, settings
 from app.processing.edges import SOURCE as E0_SOURCE
-from app.processing.parameters import DEFAULTS
 from app.processing.xas import ProcessingError
 from app.samples import repository as samples
 from app.users import repository as users
@@ -137,18 +136,19 @@ async def process_sweeps(
     db: Db,
 ) -> ProcessedSpectrum:
     """Normalisation, background, chi(k) and chi(R) of a spectrum; with several sweeps, of
-    their merge. Computed on request with automatic parameters, not stored."""
+    their merge. Computed on request with the current parameters, not stored."""
     docs = await _load_batch_sweeps(db, measurement_id, batch_no, sweeps, user)
     measured = docs[0]["measured"]
     parts = [_curve(doc, View.SPECTRUM, spectrum) for doc in docs]
     energy, mu = spectra.merge(parts) if len(parts) > 1 else parts[0]
+    params = await settings.current(db)
     try:
         result = await run_in_threadpool(
-            pipeline.process, energy, mu, measured["element"], measured["edge"]
+            pipeline.process, energy, mu, measured["element"], measured["edge"], params
         )
     except ProcessingError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from None
-    c = pipeline.curves(result)
+    c = pipeline.curves(result, params)
 
     def on_energy(values: np.ndarray | None) -> PlotCurve | None:
         return None if values is None else PlotCurve(x=_list(c.energy), y=_list(values))
@@ -177,7 +177,7 @@ async def process_sweeps(
         )
         if c.r is not None and c.chir is not None
         else None,
-        parameters=DEFAULTS.as_dict(),
+        parameters=params.as_dict(),
         problems=result.problems,
     )
 
@@ -193,7 +193,7 @@ async def export_frame(barcode: str, user: CurrentUser, db: Db) -> Response:
     if not await db[data.SWEEPS].count_documents({"frame": frame["_id"]}, limit=1):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "This frame has no data yet")
     names: dict[Any, str] = {}
-    archive = FrameZip()
+    archive = FrameZip(await settings.current(db))
     cursor = (
         db[data.SWEEPS]
         .find({"frame": frame["_id"]})

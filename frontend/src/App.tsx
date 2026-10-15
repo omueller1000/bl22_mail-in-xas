@@ -6,6 +6,7 @@ import { Layout } from "./layout/Layout";
 import { AccountPage } from "./pages/AccountPage";
 import { DataPage } from "./pages/DataPage";
 import { ServiceClientsPage } from "./pages/admin/ServiceClientsPage";
+import { XasParametersPage } from "./pages/admin/XasParametersPage";
 import { FrameConfigPage } from "./pages/FrameConfigPage";
 import { FramesPage } from "./pages/FramesPage";
 import { HomePage } from "./pages/HomePage";
@@ -59,7 +60,10 @@ const router = createBrowserRouter(
             },
             {
               element: <RequireRole role="admin" />,
-              children: [{ path: "admin/service-clients", element: <ServiceClientsPage /> }],
+              children: [
+                { path: "admin/service-clients", element: <ServiceClientsPage /> },
+                { path: "admin/xas-parameters", element: <XasParametersPage /> },
+              ],
             },
           ],
         },

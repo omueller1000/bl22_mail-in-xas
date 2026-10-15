@@ -1,4 +1,5 @@
-"""Processing parameters. Automatic for now: change the defaults here to change them everywhere.
+"""Processing parameters: the defaults. Admins can override the scientific ones on the
+XAS parameters page (app.processing.settings); everything else is changed here.
 
 Energies are in eV, k in 1/Å, R in Å. E0 is not a parameter: it is the tabulated edge energy
 of the measured element and edge (app.processing.edges).

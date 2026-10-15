@@ -1019,7 +1019,7 @@ export interface paths {
         /**
          * Process Sweeps
          * @description Normalisation, background, chi(k) and chi(R) of a spectrum; with several sweeps, of
-         *     their merge. Computed on request with automatic parameters, not stored.
+         *     their merge. Computed on request with the current parameters, not stored.
          */
         get: operations["process_sweeps"];
         put?: never;
@@ -1045,6 +1045,31 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/xas-parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Xas Parameters */
+        get: operations["get_xas_parameters"];
+        /**
+         * Set Xas Parameters
+         * @description Change parameters; they apply to all processing from now on.
+         */
+        put: operations["set_xas_parameters"];
+        post?: never;
+        /**
+         * Restore Xas Parameters
+         * @description Back to the defaults in the code.
+         */
+        delete: operations["restore_xas_parameters"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1980,6 +2005,36 @@ export interface components {
          * @enum {string}
          */
         WarningKind: "on_hold" | "not_locked";
+        /** XasParameter */
+        XasParameter: {
+            /** Name */
+            name: string;
+            /** Group */
+            group: string;
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+            /** Minimum */
+            minimum: number;
+            /** Maximum */
+            maximum: number;
+            /** Integer */
+            integer: boolean;
+            /** None Means */
+            none_means: string | null;
+            /** Value */
+            value: number | null;
+            /** Default */
+            default: number | null;
+        };
+        /** XasParametersUpdate */
+        XasParametersUpdate: {
+            /** Values */
+            values: {
+                [key: string]: number | null;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -4048,6 +4103,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_xas_parameters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XasParameter"][];
+                };
+            };
+        };
+    };
+    set_xas_parameters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["XasParametersUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XasParameter"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_xas_parameters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XasParameter"][];
                 };
             };
         };

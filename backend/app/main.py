@@ -31,6 +31,7 @@ from app.limits import limit_body_size
 from app.material_requests import routes as material_requests_routes
 from app.measurements import repository as measurements
 from app.measurements import routes as measurements_routes
+from app.processing import routes as xas_parameter_routes
 from app.samples import repository as samples
 from app.samples import routes as samples_routes
 from app.scanning import routes as scanning_routes
@@ -91,6 +92,7 @@ def create_app(
     app.include_router(material_requests_routes.router, prefix=prefix)
     app.include_router(samples_routes.router, prefix=prefix)
     app.include_router(data_routes.router, prefix=prefix)
+    app.include_router(xas_parameter_routes.router, prefix=prefix)
 
     return app
 

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 import numpy as np
 
 from app.data import export, spectra
+from app.processing.parameters import DEFAULTS
 
 
 def test_available_spectra_depend_on_channels() -> None:
@@ -82,7 +83,7 @@ def test_raw_xdi() -> None:
 
 
 def test_zip_of_a_sweep_that_cannot_be_processed() -> None:
-    archive = export.FrameZip()
+    archive = export.FrameZip(DEFAULTS)
     archive.add_sweep(SWEEP, "V2O5")  # two points and no i1: raw data only
     names = zipfile.ZipFile(io.BytesIO(archive.close())).namelist()
     assert names == ["Left-G_V2O5/AAAA-AABC_7_Left-G_V_K_EXAFS_1_002.xdi"]

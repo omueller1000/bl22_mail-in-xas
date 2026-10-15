@@ -18,7 +18,7 @@ from app import __version__
 from app.data import spectra
 from app.processing import pipeline
 from app.processing.edges import SOURCE as EDGE_SOURCE
-from app.processing.parameters import DEFAULTS
+from app.processing.parameters import Parameters
 from app.processing.xas import ProcessingError
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -115,7 +115,7 @@ def raw_xdi(sweep: dict[str, Any], sample_name: str) -> str:
     return xdi(columns, fields, f"Raw sweep, {sweep['frame']} {sweep['position']}")
 
 
-def processed_xdis(sweep: dict[str, Any], sample_name: str) -> dict[str, str]:
+def processed_xdis(sweep: dict[str, Any], sample_name: str, params: Parameters) -> dict[str, str]:
     """Processing of the sweep's default spectrum (§11.3), as {"mu"|"chi"|"chir": text}.
 
     Steps the data does not allow (e.g. no EXAFS region in a XANES scan) are left out; the
@@ -129,13 +129,17 @@ def processed_xdis(sweep: dict[str, Any], sample_name: str) -> dict[str, str]:
         return {}
     try:
         result = pipeline.process(
-            channels["energy"], spectra.compute(spectrum, channels), m["element"], m["edge"]
+            channels["energy"],
+            spectra.compute(spectrum, channels),
+            m["element"],
+            m["edge"],
+            params,
         )
     except ProcessingError:
         return {}
     if result.normalization is None:
         return {}  # nothing beyond the raw data
-    c = pipeline.curves(result)
+    c = pipeline.curves(result, params)
 
     fields = _common_fields(sweep, sample_name)
     fields += [
@@ -145,7 +149,7 @@ def processed_xdis(sweep: dict[str, Any], sample_name: str) -> dict[str, str]:
     ]
     if result.normalization:
         fields.append(("Processing.edge_step", result.normalization.edge_step))
-    fields += [(f"Processing.{key}", value) for key, value in DEFAULTS.as_dict().items()]
+    fields += [(f"Processing.{key}", value) for key, value in params.as_dict().items()]
     fields += [("Processing.problem", problem) for problem in result.problems]
     where = f"{sweep['frame']} {sweep['position']}"
 
@@ -172,7 +176,7 @@ def processed_xdis(sweep: dict[str, Any], sample_name: str) -> dict[str, str]:
                 ("k2chi", "", spectra.to_list(c.chi_weighted)),
             ],
             fields,
-            f"k^{DEFAULTS.kweight}-weighted chi(k), {where}",
+            f"k^{params.kweight}-weighted chi(k), {where}",
         )
     if c.r is not None and c.chir is not None:
         files["chir"] = xdi(
@@ -191,7 +195,8 @@ def processed_xdis(sweep: dict[str, Any], sample_name: str) -> dict[str, str]:
 class FrameZip:
     """Collects the files of one frame's export in memory (typically well below 10 MB)."""
 
-    def __init__(self) -> None:
+    def __init__(self, params: Parameters) -> None:
+        self.params = params  # processing parameters for the processed files
         self.buffer = io.BytesIO()
         self.zip = zipfile.ZipFile(self.buffer, "w", compression=zipfile.ZIP_DEFLATED)
 
@@ -200,7 +205,7 @@ class FrameZip:
         folder = folder_name(sweep["position"], sample_name)
         stem = f"{folder}/{file_stem(sweep)}"
         self.zip.writestr(f"{stem}.xdi", raw_xdi(sweep, sample_name))
-        for kind, text in processed_xdis(sweep, sample_name).items():
+        for kind, text in processed_xdis(sweep, sample_name, self.params).items():
             self.zip.writestr(f"{stem}_proc_{kind}.xdi", text)
 
     def close(self) -> bytes:

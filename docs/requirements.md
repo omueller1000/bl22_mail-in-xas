@@ -389,6 +389,7 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Warnings | `GET /warnings` (own; all for Operator) | User / Operator |
 | Data | `GET /frames/{barcode}/sweeps` (all sweeps without values: measurement, batch, sweep, what was measured, channels, available spectra), `GET /sweeps/{id}` (metadata), `GET /sweeps/{id}/curve?view=raw\|spectrum&name=…`, `GET /measurements/{id}/batches/{batch}/merge?view=…&name=…&sweeps=…`, `GET /measurements/{id}/batches/{batch}/process?spectrum=…&sweeps=…` (§11.2) | owner / Operator |
 | Export | `GET /frames/{barcode}/export.zip` | owner / Operator |
+| XAS parameters | `GET/PUT/DELETE /admin/xas-parameters` (list, change, restore defaults) | Admin |
 
 ### 10.2 Instrument API (API key, internal network only)
 
@@ -444,7 +445,7 @@ All analog channels are always recorded, even when they carry no meaningful sign
   3. **Background removal** (AUTOBK-like): a cubic spline in k whose coefficients minimise the Fourier components of χ below R_bkg = 1 Å.
   4. **χ(k)**, shown k²-weighted.
   5. **Fourier transform** χ(R) (magnitude, real and imaginary part) with a Hanning window: k from 2 Å⁻¹ to 1 Å⁻¹ before the end of the data, taper dk = 1 Å⁻¹, R up to 6 Å.
-- **Parameters** are automatic for now and collected in one class in the code (`backend/app/processing/parameters.py`), so they are easy to change. They are shown with every result and written into exported files.
+- **Parameters:** the defaults are collected in one class in the code (`backend/app/processing/parameters.py`). Admins can change the scientific ones (ranges, polynomial orders, R_bkg, k-weights, FT window) on **Admin → XAS parameters**, with allowed ranges, Apply and Restore defaults; only values that differ from the defaults are stored, and changes apply to all users immediately (no restart). Technical settings (k grid, FFT size, plotted ranges) are changed in the code only. No history of changes is kept. The parameters used are shown with every result and written into the headers of exported files.
 - If a step is not possible (e.g. a XANES scan has no post-edge or EXAFS region), the steps before it are still shown, with the reason.
 - Dead-time: SDD data is assumed to be dead-time corrected already (open item 3).
 
