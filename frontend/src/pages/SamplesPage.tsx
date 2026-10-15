@@ -53,7 +53,7 @@ export function SamplesPage() {
   return (
     <Stack>
       <Group justify="space-between">
-        <Title order={2}>Samples</Title>
+        <Title order={2}>My Samples</Title>
         <Button onClick={() => setEditing("new")}>New sample</Button>
       </Group>
       <Text c="dimmed" size="sm">

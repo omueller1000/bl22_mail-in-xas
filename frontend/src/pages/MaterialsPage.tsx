@@ -29,7 +29,7 @@ export function MaterialsPage() {
 
   return (
     <Stack>
-      <Title order={2}>Request materials</Title>
+      <Title order={2}>Request Materials</Title>
       {isPending || !plateTypes ? <PageLoader /> : <RequestForm plateTypes={plateTypes} />}
       <MyRequests />
     </Stack>

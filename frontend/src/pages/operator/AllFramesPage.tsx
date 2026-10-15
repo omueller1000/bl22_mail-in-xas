@@ -29,7 +29,7 @@ export function AllFramesPage() {
 
   return (
     <Stack>
-      <Title order={2}>All frames</Title>
+      <Title order={2}>All Frames</Title>
       <Group>
         <TextInput
           aria-label="Search frames"

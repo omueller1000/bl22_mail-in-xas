@@ -14,7 +14,7 @@ export function FramesPage() {
 
   return (
     <Stack>
-      <Title order={2}>Frames</Title>
+      <Title order={2}>My Frames</Title>
       <Text c="dimmed" size="sm">
         Frames we have issued to you. Open one to mount plates and place your samples.
       </Text>

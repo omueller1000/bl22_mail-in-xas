@@ -51,7 +51,7 @@ export function InternalStoragePage() {
 
   return (
     <Stack>
-      <Title order={2}>Internal storage</Title>
+      <Title order={2}>Internal Storage</Title>
       <MoveCard
         frame={frame}
         setFrame={setFrame}

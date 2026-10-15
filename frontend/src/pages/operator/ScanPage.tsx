@@ -113,7 +113,7 @@ export function ScanPage() {
 
   return (
     <Stack>
-      <Title order={2}>Scan frames</Title>
+      <Title order={2}>Scan Barcodes</Title>
       <Card withBorder>
         <Stack>
           <Group justify="space-between" align="flex-end">

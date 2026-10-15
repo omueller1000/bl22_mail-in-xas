@@ -25,7 +25,7 @@ export function BarcodesPage() {
 
   return (
     <Stack>
-      <Title order={2}>Barcodes</Title>
+      <Title order={2}>Generate Barcodes</Title>
       <Card withBorder maw={640}>
         <Stack>
           <Text size="sm">

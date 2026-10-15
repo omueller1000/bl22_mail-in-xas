@@ -13,7 +13,7 @@ export function AccountPage() {
 
   return (
     <Stack>
-      <Title order={2}>Account</Title>
+      <Title order={2}>My Account</Title>
       <Table variant="vertical" withTableBorder maw={640}>
         <Table.Tbody>
           <Table.Tr>

@@ -35,7 +35,7 @@ export function ServiceClientsPage() {
 
   return (
     <Stack>
-      <Title order={2}>Service clients</Title>
+      <Title order={2}>API</Title>
       <Text size="sm" c="dimmed" maw={720}>
         Programs that use the instrument API, such as the beamline control software. They
         authenticate with an API key. A new key is shown only once; store it in the program's

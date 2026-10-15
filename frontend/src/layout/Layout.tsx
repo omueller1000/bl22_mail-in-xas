@@ -18,19 +18,19 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home" },
-  { to: "/materials", label: "Request materials", role: "user" },
-  { to: "/samples", label: "Samples", role: "user" },
-  { to: "/frames", label: "Frames", role: "user" },
-  { to: "/account", label: "Account", role: "user" },
-  { to: "/operator/barcodes", label: "Barcodes", role: "operator", section: "Operator" },
-  { to: "/operator/requests", label: "Material requests", role: "operator", section: "Operator" },
+  { to: "/samples", label: "My Samples", role: "user" },
+  { to: "/frames", label: "My Frames", role: "user" },
+  { to: "/materials", label: "Request Materials", role: "user" },
+  { to: "/account", label: "My Account", role: "user" },
+  { to: "/users", label: "All Users", role: "operator", section: "Operator" },
+  { to: "/operator/frames", label: "All Frames", role: "operator", section: "Operator" },
+  { to: "/operator/scan", label: "Scan Barcodes", role: "operator", section: "Operator" },
+  { to: "/operator/storage", label: "Internal Storage", role: "operator", section: "Operator" },
+  { to: "/operator/requests", label: "Material Requests", role: "operator", section: "Operator" },
   { to: "/operator/shipping", label: "Shipping", role: "operator", section: "Operator" },
-  { to: "/operator/scan", label: "Scan frames", role: "operator", section: "Operator" },
-  { to: "/operator/storage", label: "Internal storage", role: "operator", section: "Operator" },
-  { to: "/operator/frames", label: "All frames", role: "operator", section: "Operator" },
-  { to: "/users", label: "Users", role: "operator", section: "Operator" },
-  { to: "/admin/service-clients", label: "Service clients", role: "admin", section: "Admin" },
-  { to: "/admin/xas-parameters", label: "XAS parameters", role: "admin", section: "Admin" },
+  { to: "/operator/barcodes", label: "Generate Barcodes", role: "operator", section: "Operator" },
+  { to: "/admin/service-clients", label: "API", role: "admin", section: "Admin" },
+  { to: "/admin/xas-parameters", label: "XAS Parameters", role: "admin", section: "Admin" },
 ];
 
 export function Layout() {

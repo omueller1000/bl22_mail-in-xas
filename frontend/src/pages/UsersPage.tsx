@@ -25,7 +25,7 @@ export function UsersPage() {
 
   return (
     <Stack>
-      <Title order={2}>Users</Title>
+      <Title order={2}>All Users</Title>
       <TextInput
         placeholder="Filter by name, ORCID iD, email or affiliation"
         value={filter}

@@ -32,7 +32,7 @@ export function XasParametersPage() {
 
   return (
     <Stack>
-      <Title order={2}>XAS parameters</Title>
+      <Title order={2}>XAS Parameters</Title>
       <Text c="dimmed" size="sm">
         Parameters of the XAS data processing (normalisation, background, χ(k) and Fourier
         transform). Changes apply to all users immediately, in the data viewer and in exports.

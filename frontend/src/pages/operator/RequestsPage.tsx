@@ -22,7 +22,7 @@ export function RequestsPage() {
 
   return (
     <Stack>
-      <Title order={2}>Material requests</Title>
+      <Title order={2}>Material Requests</Title>
       <SegmentedControl
         value={filter}
         onChange={(value) => setFilter(value as Filter)}
