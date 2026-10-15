@@ -18,7 +18,7 @@ A web portal for the BL22 high-throughput XAS mail-in program. It lets users:
 
 It lets beamline staff track frames through shipping, receiving and storage by barcode scanning, and it is the **input to the beamline's automated measurement queue**: the beamline control software reads measurement definitions from the portal's backend and uploads raw data to it; the portal processes the data itself.
 
-**Out of scope for this version:** data sharing between users, email notifications, audit trail, courier tracking, packing lists/labels, imaging measurements, user deactivation, editable plate-type catalog, internal TLS.
+**Out of scope for this version:** data sharing between users, Slack notifications, audit trail, courier tracking, packing lists/labels, imaging measurements, user deactivation, editable plate-type catalog, internal TLS.
 
 ---
 
@@ -102,7 +102,7 @@ Every state change and status change records **who** (user ORCID iD or service-c
 |---|---|---|
 | ORCID iD | yes | Unique, immutable, login identity. |
 | Name | yes | Taken from ORCID, **not editable**. If ORCID returns no name (private), the user enters it once at registration; it is then also not editable. |
-| Email | yes | Not verified (for now). |
+| Email | yes | Confirmed with a code before it is used (§4.3). |
 | Phone | yes | Needed for shipping. |
 | Affiliation | yes | |
 | Shipping address | yes | Exactly one. Fields: c/o (optional), street (1–2 lines), city, state/province (optional), postal code (text, optional), country. Must accept international addresses. |
@@ -115,6 +115,15 @@ All fields except ORCID iD and name are editable by the user afterwards.
 
 - Users cannot be deactivated or deleted (for now).
 - Operators and Admins can view users' contact details (needed for shipping). Only Admins change roles.
+
+### 4.3 Email confirmation
+
+- Every email address is confirmed with a **6-digit code** sent to it; the user types the code into the portal.
+- The code is valid for **60 minutes**, allows 5 attempts and can be resent (at most once per minute; a new code replaces the old one). Codes are stored hashed.
+- **Registration** is complete only once the email is confirmed.
+- **Changing the email** in the account requires confirming the new address; until then the old address stays in use.
+- No emails other than the confirmation code are sent to an unconfirmed address.
+- All accounts existing before this feature are test accounts with fake addresses; no migration is needed.
 
 ---
 
@@ -249,7 +258,32 @@ For now, notifications are **warning texts in the portal**, shown on the user's 
 - frame received but not locked,
 - frame received on hold (safety not declared).
 
-Email notifications will be specified later.
+Email notifications: §6.8.
+
+### 6.8 Email notifications
+
+Sent **immediately** (via an outbox in the database and a background sender, with retries; web requests never wait for the mail server). No user preferences: users receive all notifications meant for them.
+
+| Event | Trigger | User (owner) | Operators |
+|---|---|---|---|
+| Material request submitted | user submits a request | – | ✓ |
+| Material shipped | operator marks frames as shipped (Shipping page) | ✓ one email per shipment, listing frames and plates | – |
+| Frame and samples arrived | receive → `received` | ✓ | – |
+| Frame on hold | receive → `received_on_hold` | ✓ (what is missing) | ✓ |
+| Frame complete (data ready) | every measurement on the frame is `done` and has data | ✓ with a link to the data page | ✓ |
+| Frame returned | return → `returned` | ✓ | – |
+
+- **Operators** = all accounts with the Operator or Admin role.
+- No emails about measurement errors: the control software notifies staff about errors itself.
+- **From:** "BL22" with a no-reply sender address; no reply-to (the mail server cannot receive mail). Each email says that replies are not read and has a footer linking to the beamline website, https://www-ssrl.slac.stanford.edu/ssrl/web/beam-lines/2-2 (contact details to be added later).
+- Plain text plus simple HTML, with links into the portal.
+- SMTP connection, sender address and the portal's public URL come from the server environment, never from the repository.
+- **Admin → Email:**
+  - a **global switch** that turns all notification emails off (confirmation codes are still sent, so users can register);
+  - an optional **redirect address**: when set, every email meant for a user or operator goes to this address instead (subject marked with the intended recipient), for troubleshooting without bothering users;
+  - the most recent emails with their status (queued, sent, failed with the error);
+  - a "send test email" button.
+- Dev and local environments send to a local mail catcher or a fixed test address, never to real users.
 
 ---
 
@@ -390,6 +424,8 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Data | `GET /frames/{barcode}/sweeps` (all sweeps without values: measurement, batch, sweep, what was measured, channels, available spectra), `GET /sweeps/{id}` (metadata), `GET /sweeps/{id}/curve?view=raw\|spectrum&name=…`, `GET /measurements/{id}/batches/{batch}/merge?view=…&name=…&sweeps=…`, `GET /measurements/{id}/batches/{batch}/process?spectrum=…&sweeps=…` (§11.2) | owner / Operator |
 | Export | `GET /frames/{barcode}/export.zip` | owner / Operator |
 | XAS parameters | `GET/PUT/DELETE /admin/xas-parameters` (list, change, restore defaults) | Admin |
+| Email confirmation | `POST /users/me/email/confirm` (code), `POST /users/me/email/code` (resend), `DELETE /users/me/email/pending` (withdraw a change) | own account |
+| Email (admin) | `GET/PUT /admin/mail` (status, switch, redirect), `GET /admin/mail/outbox`, `POST /admin/mail/test` | Admin |
 
 ### 10.2 Instrument API (API key, internal network only)
 
@@ -537,7 +573,7 @@ Overlay across different measurements or positions is not required.
 | 1 | ORCID: production Public API client registered under the project lead's personal ORCID account for now (handover plan needed if ownership changes; SLAC institutional membership may be considered later). A sandbox client (sandbox.orcid.org) is used for local development with an `http://localhost` callback, believed to be accepted by the sandbox; confirm at registration. | Decided (confirm sandbox) |
 | 2 | MongoDB backups: who, how often, where. | TBD |
 | 3 | SDD dead-time: are ROI rates already dead-time corrected? If not, correction formula using OCR/LiveTime. | Open |
-| 4 | Email notifications (events, recipients, templates). | Later |
+| 4 | Email notifications: specified in §6.8 and §4.3. Slack notifications for staff. | Email decided; Slack later |
 | 5 | Processed XDI files: `…_proc_mu.xdi`, `…_proc_chi.xdi` and `…_proc_chir.xdi` (§11.5). | Decided |
 | 10 | Energy alignment (e.g. to the reference ln(i1/i2)) and user-adjustable processing parameters. | Later |
 | 6 | Element/edge restriction to beamline energy range. | Later |

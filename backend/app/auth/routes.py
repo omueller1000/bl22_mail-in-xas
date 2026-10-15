@@ -34,7 +34,9 @@ LOGIN_STATE_COOKIE = "ht_xas_login_state"
 
 
 class Me(BaseModel):
-    status: Literal["anonymous", "registration_required", "authenticated"]
+    status: Literal[
+        "anonymous", "registration_required", "email_confirmation_required", "authenticated"
+    ]
     orcid_login_enabled: bool
     dev_login_enabled: bool
     # Set once ORCID (or the dev login) has confirmed an iD.
@@ -63,7 +65,13 @@ async def me(db: Db, settings: AppSettings, session: OptionalSession) -> Me:
         return Me(status="anonymous", **base)
     user = await users.get_by_id(db, session.user_id) if session.user_id else None
     return Me(
-        status="authenticated" if user else "registration_required",
+        status=(
+            "registration_required"
+            if user is None
+            else "authenticated"
+            if users.email_confirmed(user)
+            else "email_confirmation_required"
+        ),
         orcid=session.orcid,
         orcid_name=session.orcid_name,
         user=users.to_model(user) if user else None,

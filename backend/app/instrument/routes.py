@@ -20,6 +20,7 @@ from app.frames import repository as frames
 from app.frames.models import StorageLocation
 from app.frames.states import FrameState
 from app.instrument.keys import Instrument, client_actor
+from app.mail import notify
 from app.measurements import repository as measurements
 from app.measurements.models import MeasurementStatus
 from app.measurements.options import Beam, Detection, Edge, Technique
@@ -256,6 +257,8 @@ async def instrument_set_status(
         {"_id": measurement["_id"]}, {"$set": changes}, return_document=ReturnDocument.AFTER
     )
     assert updated is not None
+    if body.status is MeasurementStatus.DONE and measurement["status"] != "done":
+        await notify.measurement_done(db, updated["frame"])
     last = await data.last_numbers(db, [updated["_id"]])
     batch, sweep = last.get(updated["_id"], (None, None))
     return InstrumentMeasurement(

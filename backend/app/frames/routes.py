@@ -16,6 +16,7 @@ from app.frames.models import (
 )
 from app.frames.states import FrameState
 from app.frames.views import frame_model, frame_models
+from app.mail import notify
 from app.material_requests import repository as material_requests
 from app.users import repository as users
 
@@ -95,7 +96,9 @@ async def mark_shipped(body: BarcodeList, operator: Operator, db: Db) -> list[Fr
 
     async with db.client.start_session() as session:
         await session.with_transaction(ship)
-    return await frame_models(db, await frames.find(db, {"_id": {"$in": barcodes}}))
+    shipped = await frames.find(db, {"_id": {"$in": barcodes}})
+    await notify.shipped(db, shipped)
+    return await frame_models(db, shipped)
 
 
 @router.get("/{barcode}")

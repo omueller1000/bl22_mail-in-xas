@@ -133,10 +133,70 @@ export interface paths {
         };
         /** Get Me */
         get: operations["get_me"];
-        /** Update Me */
+        /**
+         * Update Me
+         * @description Save the profile; a changed email is used once confirmed with the code sent to it.
+         */
         put: operations["update_me"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/email/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Email Code
+         * @description Send a new code to the address waiting for confirmation (at most once a minute).
+         */
+        post: operations["resend_email_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/email/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Email */
+        post: operations["confirm_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/email/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Email Change
+         * @description Withdraw a requested email change; the confirmed address stays.
+         */
+        delete: operations["cancel_email_change"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1075,6 +1135,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mail Status */
+        get: operations["get_mail_status"];
+        /** Set Mail Switches */
+        put: operations["set_mail_switches"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Outbox */
+        get: operations["list_outbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Test Email
+         * @description Queue a test email to the given address (ignores the switch and redirect).
+         */
+        post: operations["send_test_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1211,6 +1326,11 @@ export interface components {
             symbol: string;
             /** Z */
             z: number;
+        };
+        /** EmailCode */
+        EmailCode: {
+            /** Code */
+            code: string;
         };
         /** Frame */
         Frame: {
@@ -1349,6 +1469,28 @@ export interface components {
             /** Barcodes */
             barcodes: string[];
         };
+        /** MailStatus */
+        MailStatus: {
+            switches: components["schemas"]["MailSwitches"];
+            /** Environment */
+            environment: string;
+            /** Configured */
+            configured: boolean;
+            /** From Address */
+            from_address: string | null;
+            /** Dev Redirect */
+            dev_redirect: string | null;
+        };
+        /** MailSwitches */
+        MailSwitches: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Redirect To */
+            redirect_to?: string | null;
+        };
         /** MaterialRequest */
         MaterialRequest: {
             /** Id */
@@ -1394,7 +1536,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "anonymous" | "registration_required" | "authenticated";
+            status: "anonymous" | "registration_required" | "email_confirmation_required" | "authenticated";
             /** Orcid Login Enabled */
             orcid_login_enabled: boolean;
             /** Dev Login Enabled */
@@ -1515,6 +1657,39 @@ export interface components {
             value: string;
             /** Label */
             label: string;
+        };
+        /** OutboxEmail */
+        OutboxEmail: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** To */
+            to: string[];
+            /** Subject */
+            subject: string | null;
+            /** Status */
+            status: string;
+            /** Attempts */
+            attempts: number;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Send After
+             * Format: date-time
+             */
+            send_after: string;
+            /** Sent At */
+            sent_at: string | null;
+            /** Delivered To */
+            delivered_to: string[] | null;
+            /** Text */
+            text: string | null;
         };
         /** PlacedSample */
         PlacedSample: {
@@ -1943,6 +2118,14 @@ export interface components {
          * @enum {string}
          */
         Technique: "xanes" | "exafs";
+        /** TestEmail */
+        TestEmail: {
+            /**
+             * To
+             * Format: email
+             */
+            to: string;
+        };
         /** User */
         User: {
             /** Id */
@@ -1957,6 +2140,13 @@ export interface components {
              * Format: email
              */
             email: string;
+            /**
+             * Email Confirmed
+             * @default true
+             */
+            email_confirmed: boolean;
+            /** Pending Email */
+            pending_email?: string | null;
             /** Phone */
             phone: string;
             /** Affiliation */
@@ -2310,6 +2500,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_email_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirm_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCode"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_email_change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
                 };
             };
         };
@@ -4176,6 +4437,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["XasParameter"][];
+                };
+            };
+        };
+    };
+    get_mail_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailStatus"];
+                };
+            };
+        };
+    };
+    set_mail_switches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailSwitches"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_outbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxEmail"][];
+                };
+            };
+        };
+    };
+    send_test_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestEmail"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

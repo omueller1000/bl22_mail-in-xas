@@ -3,6 +3,8 @@
 Run locally with:  uv run uvicorn app.main:create_app --factory --reload --port 8010
 """
 
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -28,6 +30,9 @@ from app.instrument import admin_routes as service_client_routes
 from app.instrument import keys as api_keys
 from app.instrument import routes as instrument_routes
 from app.limits import limit_body_size
+from app.mail import outbox as mail_outbox
+from app.mail import routes as mail_routes
+from app.mail import sender as mail_sender
 from app.material_requests import routes as material_requests_routes
 from app.measurements import repository as measurements
 from app.measurements import routes as measurements_routes
@@ -55,9 +60,18 @@ def create_app(
         app.state.db = client[settings.mongodb_db]
         app.state.http = httpx.AsyncClient(transport=orcid_transport, timeout=10)
         await _ensure_indexes(app.state.db)
+        sender = (
+            asyncio.create_task(mail_sender.run(app.state.db, settings))
+            if settings.mail_sender_enabled
+            else None
+        )
         try:
             yield
         finally:
+            if sender:
+                sender.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await sender
             await app.state.http.aclose()
             await client.close()
 
@@ -93,6 +107,7 @@ def create_app(
     app.include_router(samples_routes.router, prefix=prefix)
     app.include_router(data_routes.router, prefix=prefix)
     app.include_router(xas_parameter_routes.router, prefix=prefix)
+    app.include_router(mail_routes.router, prefix=prefix)
 
     return app
 
@@ -110,6 +125,7 @@ async def _ensure_indexes(db: Database) -> None:
         await scanning_routes.ensure_indexes(db)
         await data.ensure_indexes(db)
         await api_keys.ensure_indexes(db)
+        await mail_outbox.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

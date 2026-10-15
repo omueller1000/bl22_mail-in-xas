@@ -32,7 +32,9 @@ export function LoginPage() {
 
   if (isPending) return <PageLoader />;
   if (me?.status === "authenticated") return <Navigate to={returnTo} replace />;
-  if (me?.status === "registration_required") return <Navigate to="/register" replace />;
+  if (me?.status === "registration_required" || me?.status === "email_confirmation_required") {
+    return <Navigate to="/register" replace />;
+  }
 
   return (
     <Stack maw={420} mx="auto" mt="xl">

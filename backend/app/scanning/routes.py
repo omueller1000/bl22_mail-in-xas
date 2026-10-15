@@ -18,6 +18,7 @@ from app.frames.repository import actor
 from app.frames.states import FrameState
 from app.frames.versioning import in_transaction
 from app.frames.views import frame_model
+from app.mail import notify
 from app.measurements import repository as measurements
 from app.scanning.rules import ScanAction, leaves_slot, outcome
 from app.users import repository as users
@@ -146,6 +147,8 @@ async def apply_scan(body: ScanRequest, operator: Operator, db: Db) -> list[Scan
 
     applied = await in_transaction(db, apply)
     before: dict[str, Any] = applied["before"]
+    for code in applied["moved"]:
+        await _notify(db, outcome(body.action, before[code]).target, before[code])
     owners = await _owners(db, before.values())
     return [
         _result(body.action, code, before.get(code), owners, moved=code in applied["moved"])
@@ -174,6 +177,16 @@ def _result(
         warning=result.warning,
         moved=moved,
     )
+
+
+async def _notify(db: Db, target: FrameState | None, frame: dict[str, Any]) -> None:
+    """Emails for the user and operators about the move (§6.8)."""
+    if target is FrameState.RECEIVED:
+        await notify.received(db, frame)
+    elif target is FrameState.RECEIVED_ON_HOLD:
+        await notify.on_hold(db, frame)
+    elif target is FrameState.RETURNED:
+        await notify.returned(db, frame)
 
 
 async def _owners(db: Db, docs: Any) -> dict[Any, dict[str, Any]]:

@@ -1,10 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api, API_BASE_URL, type Me, type Profile, type Registration, type Role, unwrap } from "./client";
+import {
+  api,
+  API_BASE_URL,
+  ApiError,
+  type Me,
+  type Profile,
+  type Registration,
+  type Role,
+  unwrap,
+} from "./client";
 
 const ME_KEY = ["me"];
 
-/** Who is logged in: anonymous, registration required, or authenticated (with the user). */
+/** Who is logged in: anonymous, registration or email confirmation required, or authenticated. */
 export function useMe() {
   return useQuery({
     queryKey: ME_KEY,
@@ -48,6 +57,35 @@ export function useRegister() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body: Registration) => unwrap(await api.POST("/users", { body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ME_KEY }),
+  });
+}
+
+/** Confirm the address waiting for confirmation with the emailed code (§4.3). */
+export function useConfirmEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) =>
+      unwrap(await api.POST("/users/me/email/confirm", { body: { code } })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ME_KEY }),
+  });
+}
+
+export function useResendEmailCode() {
+  return useMutation({
+    mutationFn: async () => {
+      const { response, error } = await api.POST("/users/me/email/code");
+      const detail = (error as unknown as { detail?: unknown } | undefined)?.detail;
+      if (!response.ok) throw new ApiError(response.status, detail);
+    },
+  });
+}
+
+/** Withdraw a requested email change. */
+export function useCancelEmailChange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.DELETE("/users/me/email/pending")),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ME_KEY }),
   });
 }

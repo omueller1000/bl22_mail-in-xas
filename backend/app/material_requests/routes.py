@@ -13,6 +13,7 @@ from app.auth.dependencies import CurrentUser, Db, Operator, ensure_operator
 from app.frames import repository as frames
 from app.frames.repository import actor
 from app.frames.states import FrameState
+from app.mail import notify
 from app.material_requests.models import (
     IssueBarcodes,
     MaterialRequest,
@@ -41,6 +42,7 @@ async def create_request(body: MaterialRequestCreate, user: CurrentUser, db: Db)
     }
     result = await db[COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
+    await notify.material_request_submitted(db, doc, user)
     return to_model(doc, user)
 
 

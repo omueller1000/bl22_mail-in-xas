@@ -16,7 +16,10 @@ export function RequireUser() {
     const returnTo = location.pathname + location.search;
     return <Navigate to={`/login?return_to=${encodeURIComponent(returnTo)}`} replace />;
   }
-  if (me.status === "registration_required") return <Navigate to="/register" replace />;
+  // Registration (including the email confirmation) is completed on the register page.
+  if (me.status === "registration_required" || me.status === "email_confirmation_required") {
+    return <Navigate to="/register" replace />;
+  }
   return <Outlet />;
 }
 

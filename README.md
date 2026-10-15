@@ -83,6 +83,13 @@ Only raw sweeps are uploaded; the portal does the processing (`backend/app/proce
 
 Real measurement files for testing go into `testdata-private/` (git-ignored, never committed).
 
+## Email
+
+Outgoing mail is configured in `backend/.env` (`HT_XAS_SMTP_*`, `HT_XAS_MAIL_FROM_ADDRESS`; see
+`.env.example`). Outside production no email reaches real recipients: everything goes to
+`HT_XAS_MAIL_DEV_REDIRECT`, or, if that is unset, is only recorded. Recorded emails, including
+confirmation codes, can be read on Admin → Email.
+
 ## Local ports
 
 | Port | Service |

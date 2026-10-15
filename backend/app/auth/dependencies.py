@@ -39,12 +39,23 @@ async def require_session(session: OptionalSession) -> Session:
 CurrentSession = Annotated[Session, Depends(require_session)]
 
 
-async def current_user(session: CurrentSession, db: Db) -> dict[str, Any]:
+async def registered_user(session: CurrentSession, db: Db) -> dict[str, Any]:
+    """The account, also while its email is not yet confirmed (for the confirmation itself)."""
     if session.user_id is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Registration required")
     user = await users.get_by_id(db, session.user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+    return user
+
+
+RegisteredUser = Annotated[dict[str, Any], Depends(registered_user)]
+
+
+async def current_user(user: RegisteredUser) -> dict[str, Any]:
+    """The account, once registration is complete (email confirmed, §4.3)."""
+    if not users.email_confirmed(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Confirm your email address first")
     return user
 
 

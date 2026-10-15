@@ -50,6 +50,22 @@ class Settings(BaseSettings):
     # Fake ORCID login for development and tests. Forbidden in production.
     dev_login_enabled: bool = False
 
+    # Outgoing mail (requirements §6.8). Without smtp_host and mail_from_address nothing is sent;
+    # emails stay in the outbox as failed with the reason.
+    smtp_host: str | None = None
+    smtp_port: int = 25
+    smtp_starttls: bool = False
+    # Used only if the server offers authentication.
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    mail_from_address: str | None = None
+    mail_from_name: str = "BL22"
+    # Outside production, mail never reaches real recipients: it goes to this address, or is
+    # not sent at all if unset (it is still recorded, with its text, on the Admin -> Email page).
+    mail_dev_redirect: str | None = None
+    # Background sender that delivers the outbox; tests switch it off and deliver explicitly.
+    mail_sender_enabled: bool = True
+
     @field_validator("api_prefix")
     @classmethod
     def _normalize_prefix(cls, value: str) -> str:
@@ -92,6 +108,11 @@ class Settings(BaseSettings):
     def frontend_base(self) -> str:
         """Frontend path with trailing slash, e.g. /mail-in-xas/."""
         return self.api_prefix.removesuffix("api")
+
+    @property
+    def portal_url(self) -> str:
+        """Public URL of the frontend, e.g. https://www-ssrl.slac.stanford.edu/mail-in-xas/."""
+        return f"{self.public_origin}{self.frontend_base}"
 
     @property
     def orcid_login_enabled(self) -> bool:

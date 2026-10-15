@@ -32,6 +32,7 @@ export const TEST_USER: User = {
   name: "Ada Test",
   role: "user",
   email: "ada@example.org",
+  email_confirmed: true,
   phone: "+1 650 555 0100",
   affiliation: "Example University",
   shipping_address: {

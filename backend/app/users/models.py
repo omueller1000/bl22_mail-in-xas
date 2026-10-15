@@ -52,10 +52,18 @@ class User(BaseModel):
     name: str
     role: Role
     email: EmailStr
+    # False until the address is confirmed with a code (§4.3).
+    email_confirmed: bool = True
+    # A new address the user asked for, used once it is confirmed.
+    pending_email: EmailStr | None = None
     phone: str
     affiliation: str
     shipping_address: Address
     created_at: datetime
+
+
+class EmailCode(_Model):
+    code: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$")]
 
 
 class RoleUpdate(_Model):

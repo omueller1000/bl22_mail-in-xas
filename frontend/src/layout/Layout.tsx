@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/operator/barcodes", label: "Generate Barcodes", role: "operator", section: "Operator" },
   { to: "/admin/service-clients", label: "API", role: "admin", section: "Admin" },
   { to: "/admin/xas-parameters", label: "XAS Parameters", role: "admin", section: "Admin" },
+  { to: "/admin/email", label: "Email", role: "admin", section: "Admin" },
 ];
 
 export function Layout() {
@@ -113,7 +114,7 @@ function UserMenu() {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{me.orcid}</Menu.Label>
-        {me.user && (
+        {me.status === "authenticated" && (
           <Menu.Item component={Link} to="/account">
             Account
           </Menu.Item>

@@ -40,6 +40,8 @@ def make_settings(**overrides: Any) -> Settings:
         "environment": "local",
         "mongodb_uri": TEST_MONGODB_URI or UNREACHABLE_MONGODB_URI,
         "mongodb_db": TEST_DB,
+        # Tests deliver the outbox themselves (tests/test_mail.py).
+        "mail_sender_enabled": False,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]
@@ -124,10 +126,35 @@ async def dev_login(
     return response.json()
 
 
-async def register(client: AsyncClient, **overrides: Any) -> dict[str, Any]:
-    response = await client.post(f"{API}/users", json={**PROFILE, **overrides})
-    assert response.status_code == 201, response.text
+async def last_code(email: str) -> str:
+    """The confirmation code most recently queued for this address (read from the outbox)."""
+    mongo: AsyncMongoClient[dict[str, Any]] = AsyncMongoClient(TEST_MONGODB_URI)
+    try:
+        doc = await mongo[TEST_DB].mail_outbox.find_one(
+            {"kind": "email_code", "to.email": email}, sort=[("created_at", -1), ("_id", -1)]
+        )
+    finally:
+        await mongo.close()
+    assert doc is not None, f"no code sent to {email}"
+    return doc["data"]["code"]
+
+
+async def confirm_email(client: AsyncClient, email: str) -> dict[str, Any]:
+    response = await client.post(
+        f"{API}/users/me/email/confirm", json={"code": await last_code(email)}
+    )
+    assert response.status_code == 200, response.text
     return response.json()
+
+
+async def register(
+    client: AsyncClient, *, confirm: bool = True, **overrides: Any
+) -> dict[str, Any]:
+    """Register the logged-in ORCID iD; by default also confirm the email (§4.3)."""
+    body = {**PROFILE, **overrides}
+    response = await client.post(f"{API}/users", json=body)
+    assert response.status_code == 201, response.text
+    return await confirm_email(client, body["email"]) if confirm else response.json()
 
 
 async def login_as(client: AsyncClient, orcid_id: str, role: str = "user") -> dict[str, Any]:
@@ -135,6 +162,8 @@ async def login_as(client: AsyncClient, orcid_id: str, role: str = "user") -> di
     me = await dev_login(client, orcid_id, role=role)
     if me["status"] == "authenticated":
         return me["user"]
+    if me["status"] == "email_confirmation_required":
+        return await confirm_email(client, me["user"]["email"])
     return await register(client)
 
 
