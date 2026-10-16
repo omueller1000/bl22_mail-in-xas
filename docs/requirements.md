@@ -570,7 +570,7 @@ Overlay across different measurements or positions is not required.
 
 | # | Topic | Status |
 |---|---|---|
-| 1 | ORCID: production Public API client registered under the project lead's personal ORCID account for now (handover plan needed if ownership changes; SLAC institutional membership may be considered later). A sandbox client (sandbox.orcid.org) is used for local development with an `http://localhost` callback, believed to be accepted by the sandbox; confirm at registration. | Decided (confirm sandbox) |
+| 1 | ORCID: production Public API client registered under the project lead's personal ORCID account for now (handover plan needed if ownership changes; SLAC institutional membership may be considered later). A sandbox client (sandbox.orcid.org) is used for local development with an `http://localhost` callback, believed to be accepted by the sandbox; confirm at registration. | Production client registered (2026-10-15, redirect URI `https://www-ssrl.slac.stanford.edu/mail-in-xas/api/auth/orcid/callback`); credentials kept by the project lead for the production `.env` |
 | 2 | MongoDB backups: who, how often, where. | TBD |
 | 3 | SDD dead-time: are ROI rates already dead-time corrected? If not, correction formula using OCR/LiveTime. | Open |
 | 4 | Email notifications: specified in §6.8 and §4.3. Slack notifications for staff. | Email decided; Slack later |

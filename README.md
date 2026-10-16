@@ -11,7 +11,7 @@ Requirements: [docs/requirements.md](docs/requirements.md)
 | `backend/` | FastAPI app (Python 3.12, MongoDB) |
 | `frontend/` | Vite + React + TypeScript, Mantine UI, TanStack Query |
 | `tools/` | Development helpers: `fake_instrument.py` (simulates the control software) |
-| `deploy/` | nginx and systemd configuration (not yet created) |
+| `deploy/` | Installation on the app VM: [INSTALL.md](deploy/INSTALL.md), nginx and systemd configuration, settings templates, `deploy.sh` |
 | `docs/` | Requirements and design notes |
 
 ## Backend: local development
@@ -48,7 +48,7 @@ Real ORCID login needs a client registered at https://sandbox.orcid.org with the
 
 ## Frontend: local development
 
-Prerequisite: Node.js 24+. Start the backend first (above).
+Prerequisite: Node.js 22.12+. Start the backend first (above).
 
 ```bash
 cd frontend

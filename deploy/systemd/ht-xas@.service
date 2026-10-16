@@ -1,0 +1,32 @@
+# Backend of the BL22 mail-in XAS portal, one instance per environment:
+#   ht-xas@prod  ->  /SSRL_LOCAL_OM/ht-xas/prod, settings /etc/ht-xas/prod.env
+#   ht-xas@dev   ->  /SSRL_LOCAL_OM/ht-xas/dev,  settings /etc/ht-xas/dev.env
+# Install: copy to /etc/systemd/system/ (see deploy/INSTALL.md).
+
+[Unit]
+Description=BL22 mail-in XAS portal backend (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=htxas
+Group=htxas
+# HT_XAS_* settings, including HT_XAS_PORT for the listen port below.
+EnvironmentFile=/etc/ht-xas/%i.env
+WorkingDirectory=/SSRL_LOCAL_OM/ht-xas/%i/backend
+# Only the VM itself can connect (the VM has no firewall); nginx forwards requests.
+ExecStart=/SSRL_LOCAL_OM/ht-xas/%i/backend/.venv/bin/uvicorn app.main:create_app --factory \
+    --host 127.0.0.1 --port ${HT_XAS_PORT} \
+    --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=5
+
+# The backend writes nothing to local disk (data lives in MongoDB).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
