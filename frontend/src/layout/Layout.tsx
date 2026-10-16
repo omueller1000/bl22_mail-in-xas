@@ -1,5 +1,23 @@
 import { AppShell, Badge, Burger, Button, Group, Menu, NavLink, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import {
+  type Icon,
+  IconAdjustments,
+  IconApi,
+  IconBuildingWarehouse,
+  IconClipboardList,
+  IconDirectionSign,
+  IconFlask,
+  IconHome,
+  IconMail,
+  IconPackage,
+  IconScan,
+  IconStack,
+  IconStack2,
+  IconTruckDelivery,
+  IconUser,
+  IconUsers,
+} from "@tabler/icons-react";
 import { Fragment } from "react";
 import { Link, NavLink as RouterNavLink, Outlet, useNavigate } from "react-router";
 
@@ -10,6 +28,8 @@ import { hasRole, ROLE_LABELS } from "../auth/roles";
 interface NavItem {
   to: string;
   label: string;
+  /** Shown left of the label. */
+  icon: Icon;
   /** Minimum role; omitted = visible to everyone. */
   role?: Role;
   /** Heading shown above the first item of a section. */
@@ -17,21 +37,51 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Home" },
-  { to: "/samples", label: "My Samples", role: "user" },
-  { to: "/frames", label: "My Frames", role: "user" },
-  { to: "/materials", label: "Request Materials", role: "user" },
-  { to: "/account", label: "My Account", role: "user" },
-  { to: "/users", label: "All Users", role: "operator", section: "Operator" },
-  { to: "/operator/frames", label: "All Frames", role: "operator", section: "Operator" },
-  { to: "/operator/scan", label: "Scan Barcodes", role: "operator", section: "Operator" },
-  { to: "/operator/storage", label: "Internal Storage", role: "operator", section: "Operator" },
-  { to: "/operator/requests", label: "Material Requests", role: "operator", section: "Operator" },
-  { to: "/operator/shipping", label: "Shipping", role: "operator", section: "Operator" },
-  { to: "/operator/barcodes", label: "Generate Barcodes", role: "operator", section: "Operator" },
-  { to: "/admin/service-clients", label: "API", role: "admin", section: "Admin" },
-  { to: "/admin/xas-parameters", label: "XAS Parameters", role: "admin", section: "Admin" },
-  { to: "/admin/email", label: "Email", role: "admin", section: "Admin" },
+  { to: "/", label: "Home", icon: IconHome },
+  { to: "/samples", label: "My Samples", icon: IconFlask, role: "user" },
+  { to: "/frames", label: "My Frames", icon: IconStack, role: "user" },
+  { to: "/materials", label: "Request Materials", icon: IconPackage, role: "user" },
+  { to: "/account", label: "My Account", icon: IconUser, role: "user" },
+  { to: "/users", label: "All Users", icon: IconUsers, role: "operator", section: "Operator" },
+  { to: "/operator/frames", label: "All Frames", icon: IconStack2, role: "operator", section: "Operator" },
+  { to: "/operator/scan", label: "Frame Actions", icon: IconDirectionSign, role: "operator", section: "Operator" },
+  {
+    to: "/operator/storage",
+    label: "Internal Storage",
+    icon: IconBuildingWarehouse,
+    role: "operator",
+    section: "Operator",
+  },
+  {
+    to: "/operator/requests",
+    label: "Material Requests",
+    icon: IconClipboardList,
+    role: "operator",
+    section: "Operator",
+  },
+  {
+    to: "/operator/shipping",
+    label: "Shipping",
+    icon: IconTruckDelivery,
+    role: "operator",
+    section: "Operator",
+  },
+  {
+    to: "/operator/barcodes",
+    label: "Generate Barcodes",
+    icon: IconScan,
+    role: "operator",
+    section: "Operator",
+  },
+  { to: "/admin/service-clients", label: "API", icon: IconApi, role: "admin", section: "Admin" },
+  {
+    to: "/admin/xas-parameters",
+    label: "XAS Parameters",
+    icon: IconAdjustments,
+    role: "admin",
+    section: "Admin",
+  },
+  { to: "/admin/email", label: "Email", icon: IconMail, role: "admin", section: "Admin" },
 ];
 
 export function Layout() {
@@ -69,6 +119,7 @@ export function Layout() {
               to={item.to}
               end={item.to === "/"}
               label={item.label}
+              leftSection={<item.icon size={18} stroke={1.5} />}
               onClick={close}
             />
           </Fragment>

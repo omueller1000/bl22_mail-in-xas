@@ -1,14 +1,25 @@
-import { Alert, Anchor, Group, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Group,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { IconLock, IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import type { FrameState } from "../../api/client";
+import type { Frame, FrameState } from "../../api/client";
 import { useFrames, usePlateTypes } from "../../api/materials";
 import { PageLoader } from "../../auth/guards";
 import { DataLink } from "../../data/DataLink";
-import { plateSummary } from "../../frames/summary";
-import { FRAME_STATE_LABELS } from "../../materials/labels";
+import { plateSummary, statusSince } from "../../frames/summary";
+import { formatDate, formatDateTime, FRAME_STATE_LABELS } from "../../materials/labels";
 import { FrameStateBadge } from "../../frames/FrameStateBadge";
 
 /** All issued frames, for Operators (requirements §9.5). */
@@ -65,6 +76,7 @@ export function AllFramesPage() {
                 <Table.Th>Barcode</Table.Th>
                 <Table.Th>User</Table.Th>
                 <Table.Th>Status</Table.Th>
+                <Table.Th>Since</Table.Th>
                 <Table.Th>Plates</Table.Th>
                 <Table.Th>Samples</Table.Th>
                 <Table.Th>Safe / locked</Table.Th>
@@ -86,6 +98,9 @@ export function AllFramesPage() {
                   <Table.Td>
                     <FrameStateBadge state={frame.state} />
                   </Table.Td>
+                  <Table.Td>
+                    <StatusSince frame={frame} />
+                  </Table.Td>
                   <Table.Td>{plateSummary(frame, plateTypes)}</Table.Td>
                   <Table.Td>{frame.positions.length || "—"}</Table.Td>
                   <Table.Td>
@@ -106,5 +121,18 @@ export function AllFramesPage() {
         </Table.ScrollContainer>
       )}
     </Stack>
+  );
+}
+
+/** Date the frame entered its current status; time and who did it on hover. */
+function StatusSince({ frame }: { frame: Frame }) {
+  const event = statusSince(frame);
+  if (!event) return <Text size="sm">—</Text>;
+  return (
+    <Tooltip label={`${formatDateTime(event.at)} by ${event.by}`} withArrow>
+      <Text size="sm" style={{ whiteSpace: "nowrap" }}>
+        {formatDate(event.at)}
+      </Text>
+    </Tooltip>
   );
 }

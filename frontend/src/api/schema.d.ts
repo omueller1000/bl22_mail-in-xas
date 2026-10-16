@@ -1962,6 +1962,8 @@ export interface components {
             current_state: components["schemas"]["FrameState"] | null;
             /** Owner */
             owner: string | null;
+            /** Note */
+            note: string;
             /** Safe */
             safe: boolean;
             /** Locked */

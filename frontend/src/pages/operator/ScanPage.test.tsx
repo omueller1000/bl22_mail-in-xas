@@ -14,6 +14,7 @@ function lookup(barcode: string): ScannedFrame {
       barcode,
       current_state: null,
       owner: null,
+      note: "",
       safe: false,
       locked: false,
       actions: (["receive", "external_storage", "return", "void"] as const).map((action) => ({
@@ -28,6 +29,7 @@ function lookup(barcode: string): ScannedFrame {
     barcode,
     current_state: "shipped_to_user",
     owner: "Ada Test",
+    note: "Box 3, iron oxides",
     safe: true,
     locked: false,
     actions: [
@@ -105,6 +107,8 @@ describe("ScanPage", () => {
     await scan("BBBB-BBBB");
     await within(await screen.findByRole("table", { name: "Scanned frames" })).findByText("Unknown barcode");
 
+    // The frame's note is shown.
+    expect(within(scannedTable()).getByText("Box 3, iron oxides")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "mark as received AAAA-AAAA" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "move to external storage AAAA-AAAA" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "mark as returned to user AAAA-AAAA" })).toBeDisabled();

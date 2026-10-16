@@ -113,7 +113,7 @@ export function ScanPage() {
 
   return (
     <Stack>
-      <Title order={2}>Scan Barcodes</Title>
+      <Title order={2}>Frame Actions</Title>
       <Card withBorder>
         <Stack>
           <Group justify="space-between" align="flex-end">
@@ -195,6 +195,7 @@ function ScannedTable({
             <Table.Th>Barcode</Table.Th>
             <Table.Th>User</Table.Th>
             <Table.Th>Status</Table.Th>
+            <Table.Th>Note</Table.Th>
             <Table.Th>Safe</Table.Th>
             <Table.Th>Locked</Table.Th>
             <Table.Th>Action</Table.Th>
@@ -224,6 +225,11 @@ function ScannedTable({
                     Unknown barcode
                   </Text>
                 )}
+              </Table.Td>
+              <Table.Td maw={260}>
+                <Text size="sm" lineClamp={2} title={f.note || undefined}>
+                  {f.note || "—"}
+                </Text>
               </Table.Td>
               <Table.Td><YesNoIcon value={f.current_state ? f.safe : null} /></Table.Td>
               <Table.Td><YesNoIcon value={f.current_state ? f.locked : null} /></Table.Td>

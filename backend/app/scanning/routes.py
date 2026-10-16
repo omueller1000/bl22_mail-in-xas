@@ -80,6 +80,8 @@ class ScannedFrame(BaseModel):
     barcode: str
     current_state: FrameState | None
     owner: str | None
+    # The frame's note (its description by the user); empty if none.
+    note: str
     safe: bool
     locked: bool
     actions: list[ActionOutcome]
@@ -108,6 +110,7 @@ async def lookup_scan(body: LookupRequest, _: Operator, db: Db) -> list[ScannedF
                 barcode=code,
                 current_state=frame["state"] if frame else None,
                 owner=owner["name"] if owner else None,
+                note=frame.get("note", "") if frame else "",
                 safe=bool(frame and frame.get("safety_declared")),
                 locked=bool(frame and frame.get("locked")),
                 actions=outcomes,

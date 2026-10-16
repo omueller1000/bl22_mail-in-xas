@@ -8,3 +8,10 @@ export function plateSummary(frame: Pick<Frame, "plates">, plateTypes: PlateType
   if (left?.blocks_other_side) return left.name;
   return `${left?.name ?? "empty"} | ${right?.name ?? "empty"}`;
 }
+
+/** When the frame entered its current status, and who moved it (from the history). */
+export function statusSince(
+  frame: Pick<Frame, "state" | "history">,
+): Frame["history"][number] | undefined {
+  return [...frame.history].reverse().find((event) => event.state === frame.state);
+}

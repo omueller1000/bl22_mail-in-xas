@@ -68,8 +68,17 @@ async def test_lookup_explains_receiving_each_frame(client: AsyncClient, raw_db:
     assert receive["ZZZZ-ZZZZ"]["problem"] == "Unknown barcode"
     owners = {f["barcode"]: f["owner"] for f in response.json()}
     assert owners[ready] == "Ada Test"
+    notes = {f["barcode"]: f["note"] for f in response.json()}
+    assert notes[ready] == "" and notes["ZZZZ-ZZZZ"] == ""
     # Checking changes nothing.
     assert await state_of(client, ready) == "shipped_to_user"
+
+
+async def test_lookup_shows_the_frame_note(client: AsyncClient, raw_db: Any) -> None:
+    [code] = await frames_in(client, raw_db, "shipped_to_user")
+    await raw_db.frames.update_one({"_id": code}, {"$set": {"note": "Box 3, iron oxides"}})
+    [frame] = (await client.post(f"{API}/scans/lookup", json={"barcodes": [code]})).json()
+    assert frame["note"] == "Box 3, iron oxides"
 
 
 async def test_apply_moves_valid_frames_only(client: AsyncClient, raw_db: Any) -> None:
