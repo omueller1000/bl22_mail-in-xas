@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from bson import ObjectId
+from pymongo import ASCENDING, DESCENDING
 from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.db import Database
@@ -11,6 +12,12 @@ from app.frames.states import FrameState
 from app.material_requests.models import RequestState
 
 COLLECTION = "material_requests"
+
+
+async def ensure_indexes(db: Database) -> None:
+    await db[COLLECTION].create_index([("number", DESCENDING)])
+    await db[COLLECTION].create_index([("state", ASCENDING), ("number", DESCENDING)])
+    await db[COLLECTION].create_index([("user_id", ASCENDING), ("number", DESCENDING)])
 
 
 async def fulfil_if_shipped(

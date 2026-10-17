@@ -34,6 +34,7 @@ from app.limits import limit_body_size
 from app.mail import outbox as mail_outbox
 from app.mail import routes as mail_routes
 from app.mail import sender as mail_sender
+from app.material_requests import repository as material_requests
 from app.material_requests import routes as material_requests_routes
 from app.measurements import repository as measurements
 from app.measurements import routes as measurements_routes
@@ -128,6 +129,7 @@ async def _ensure_indexes(db: Database) -> None:
         await data.ensure_indexes(db)
         await api_keys.ensure_indexes(db)
         await mail_outbox.ensure_indexes(db)
+        await material_requests.ensure_indexes(db)
     except PyMongoError as exc:
         logger.error("Could not create MongoDB indexes: %s: %s", type(exc).__name__, exc)
 

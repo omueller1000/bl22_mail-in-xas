@@ -1,5 +1,7 @@
 """Account endpoints (requirements §4): registration, own profile, user list, roles."""
 
+from typing import Any, Literal
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.auth import sessions
@@ -10,6 +12,16 @@ from app.auth.dependencies import (
     Db,
     Operator,
     RegisteredUser,
+)
+from app.pagination import (
+    Page,
+    PageNumber,
+    PageSize,
+    Search,
+    SortOrder,
+    contains,
+    find_page,
+    search_text,
 )
 from app.roles import Role
 from app.users import email_codes
@@ -98,8 +110,29 @@ async def cancel_email_change(user: RegisteredUser, db: Db) -> User:
 
 
 @router.get("")
-async def list_users(_: Operator, db: Db) -> list[User]:
-    return [users.to_model(doc) for doc in await users.list_all(db)]
+async def list_users(
+    _: Operator,
+    db: Db,
+    page: PageNumber = 1,
+    page_size: PageSize = 50,
+    q: Search = None,
+    role: Role | None = None,
+    sort: Literal["name", "affiliation"] = "name",
+    order: SortOrder = "asc",
+) -> Page[User]:
+    """`q` matches name, ORCID iD, email or affiliation."""
+    query: dict[str, Any] = {"role": role.value} if role else {}
+    text = search_text(q)
+    if text:
+        query["$or"] = [
+            {field: contains(text)} for field in ("name", "orcid", "email", "affiliation")
+        ]
+    docs, total = await find_page(
+        db[users.COLLECTION], query, sort=sort, order=order, page=page, page_size=page_size
+    )
+    return Page(
+        items=[users.to_model(doc) for doc in docs], total=total, page=page, page_size=page_size
+    )
 
 
 @router.get("/{user_id}")

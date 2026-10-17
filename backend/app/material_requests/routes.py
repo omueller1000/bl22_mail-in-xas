@@ -1,7 +1,7 @@
 """Material request endpoints (requirements §7)."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status
@@ -23,6 +23,7 @@ from app.material_requests.models import (
     to_model,
 )
 from app.material_requests.repository import COLLECTION
+from app.pagination import Page, PageNumber, PageSize, Search, SortOrder, find_page, search_text
 from app.users import repository as users
 
 router = APIRouter(prefix="/material-requests", tags=["material requests"])
@@ -48,19 +49,44 @@ async def create_request(body: MaterialRequestCreate, user: CurrentUser, db: Db)
 
 @router.get("")
 async def list_requests(
-    user: CurrentUser, db: Db, state: RequestState | None = None, all_users: bool = False
+    user: CurrentUser, db: Db, state: RequestState | None = None
 ) -> list[MaterialRequest]:
-    """Own requests; Operators may list everyone's with `all_users=true`."""
-    query: dict[str, Any] = {}
-    if all_users:
-        ensure_operator(user)
-    else:
-        query["user_id"] = user["_id"]
+    """Own requests, newest first."""
+    query: dict[str, Any] = {"user_id": user["_id"]}
     if state:
         query["state"] = state.value
     docs = await db[COLLECTION].find(query).sort("number", DESCENDING).to_list()
+    return [to_model(doc, user) for doc in docs]
+
+
+@router.get("/all")
+async def list_all_requests(
+    _: Operator,
+    db: Db,
+    page: PageNumber = 1,
+    page_size: PageSize = 50,
+    q: Search = None,
+    state: RequestState | None = None,
+    sort: Literal["number"] = "number",
+    order: SortOrder = "desc",
+) -> Page[MaterialRequest]:
+    """All users' requests, one page at a time (§9.5). `q` is a request number or part of the
+    user's name."""
+    query: dict[str, Any] = {"state": state.value} if state else {}
+    text = search_text(q)
+    if text:
+        by_name: dict[str, Any] = {"user_id": {"$in": await users.ids_with_name(db, text)}}
+        query["$or"] = [{"number": int(text)}, by_name] if text.isdigit() else [by_name]
+    docs, total = await find_page(
+        db[COLLECTION], query, sort=sort, order=order, page=page, page_size=page_size
+    )
     owners = await users.get_many(db, {doc["user_id"] for doc in docs})
-    return [to_model(doc, owners[doc["user_id"]]) for doc in docs]
+    return Page(
+        items=[to_model(doc, owners[doc["user_id"]]) for doc in docs],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/{request_id}")

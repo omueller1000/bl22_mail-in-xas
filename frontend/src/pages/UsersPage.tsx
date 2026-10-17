@@ -1,77 +1,91 @@
-import { Alert, Anchor, Badge, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Anchor, Badge, Group, Select, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { useMe } from "../api/auth";
 import type { Role, User } from "../api/client";
-import { useSetRole, useUsers } from "../api/users";
-import { PageLoader } from "../auth/guards";
+import { type UserSort, useSetRole, useUsers } from "../api/users";
 import { hasRole, ROLE_LABELS, ROLES } from "../auth/roles";
+import { type PagedColumn, PagedTable } from "../components/PagedTable";
+import { usePaging } from "../components/paging";
 
-/** User list for Operators; Admins can also change roles. */
+/** User list for Operators, paged on the server; Admins can also change roles. */
 export function UsersPage() {
   const { data: me } = useMe();
-  const { data: users, isPending, error } = useUsers();
-  const [filter, setFilter] = useState("");
-
-  if (isPending) return <PageLoader />;
-  if (error) return <Alert color="red">{error.message}</Alert>;
-
+  const [role, setRole] = useState<Role | null>(null);
+  const paging = usePaging<UserSort>({ sort: "name", order: "asc" });
+  const users = useUsers({ ...paging.params, role: role ?? undefined });
   const isAdmin = me?.user ? hasRole(me.user.role, "admin") : false;
-  const needle = filter.trim().toLowerCase();
-  const shown = users.filter((u) =>
-    [u.name, u.orcid, u.email, u.affiliation].some((field) => field.toLowerCase().includes(needle)),
-  );
+
+  const columns: PagedColumn<User, UserSort>[] = [
+    { key: "name", label: "Name", sort: "name", render: (user) => user.name },
+    {
+      key: "orcid",
+      label: "ORCID iD",
+      render: (user) => (
+        <Anchor href={`https://orcid.org/${user.orcid}`} target="_blank" rel="noreferrer">
+          {user.orcid}
+        </Anchor>
+      ),
+    },
+    { key: "affiliation", label: "Affiliation", sort: "affiliation", render: (user) => user.affiliation },
+    {
+      key: "contact",
+      label: "Email / phone",
+      render: (user) => (
+        <>
+          <Text size="sm">{user.email}</Text>
+          <Text size="sm" c="dimmed">
+            {user.phone}
+          </Text>
+        </>
+      ),
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (user) =>
+        isAdmin && user.id !== me?.user?.id ? (
+          <RoleSelect user={user} />
+        ) : (
+          <Badge variant="light">{ROLE_LABELS[user.role]}</Badge>
+        ),
+    },
+  ];
 
   return (
     <Stack>
       <Title order={2}>All Users</Title>
-      <TextInput
-        placeholder="Filter by name, ORCID iD, email or affiliation"
-        value={filter}
-        onChange={(event) => setFilter(event.currentTarget.value)}
-        maw={420}
+      <Group>
+        <TextInput
+          aria-label="Search users"
+          placeholder="Search by name, ORCID iD, email or affiliation"
+          leftSection={<IconSearch size={16} />}
+          value={paging.search}
+          onChange={(event) => paging.setSearch(event.currentTarget.value)}
+          w={420}
+        />
+        <Select
+          aria-label="Role"
+          placeholder="Any role"
+          clearable
+          data={ROLES.map((value) => ({ value, label: ROLE_LABELS[value] }))}
+          value={role}
+          onChange={(value) => {
+            setRole(value as Role | null);
+            paging.firstPage();
+          }}
+          w={180}
+        />
+      </Group>
+      <PagedTable
+        columns={columns}
+        paging={paging}
+        query={users}
+        rowKey={(user) => user.id}
+        empty="No users match."
       />
-      <Table.ScrollContainer minWidth={800}>
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>ORCID iD</Table.Th>
-              <Table.Th>Affiliation</Table.Th>
-              <Table.Th>Email / phone</Table.Th>
-              <Table.Th>Role</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {shown.map((user) => (
-              <Table.Tr key={user.id}>
-                <Table.Td>{user.name}</Table.Td>
-                <Table.Td>
-                  <Anchor href={`https://orcid.org/${user.orcid}`} target="_blank" rel="noreferrer">
-                    {user.orcid}
-                  </Anchor>
-                </Table.Td>
-                <Table.Td>{user.affiliation}</Table.Td>
-                <Table.Td>
-                  <Text size="sm">{user.email}</Text>
-                  <Text size="sm" c="dimmed">
-                    {user.phone}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {isAdmin && user.id !== me?.user?.id ? (
-                    <RoleSelect user={user} />
-                  ) : (
-                    <Badge variant="light">{ROLE_LABELS[user.role]}</Badge>
-                  )}
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-      {shown.length === 0 && <Text c="dimmed">No users match.</Text>}
     </Stack>
   );
 }

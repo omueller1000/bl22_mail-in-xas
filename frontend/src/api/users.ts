@@ -1,13 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { SortOrder } from "../components/paging";
 import { api, type Role, unwrap } from "./client";
 
 const USERS_KEY = ["users"];
 
-export function useUsers() {
+export type UserSort = "name" | "affiliation";
+
+/** One page of users (Operators), searched and sorted on the server. */
+export function useUsers(params: {
+  page: number;
+  page_size: number;
+  sort: UserSort;
+  order: SortOrder;
+  q?: string;
+  role?: Role;
+}) {
   return useQuery({
-    queryKey: USERS_KEY,
-    queryFn: async () => unwrap(await api.GET("/users")),
+    queryKey: [...USERS_KEY, params],
+    queryFn: async () => unwrap(await api.GET("/users", { params: { query: params } })),
+    placeholderData: keepPreviousData,
   });
 }
 

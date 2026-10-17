@@ -110,7 +110,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Users */
+        /**
+         * List Users
+         * @description `q` matches name, ORCID iD, email or affiliation.
+         */
         get: operations["list_users"];
         put?: never;
         /**
@@ -285,6 +288,28 @@ export interface paths {
          * @description Own frames; Operators may list all frames with `all_users=true`.
          */
         get: operations["list_frames"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List All Frames
+         * @description All users' frames, one page at a time (§9.5). Without `state`, reserved barcodes are left
+         *     out (they have no owner yet). `q` matches the start of the barcode, the owner's name or the
+         *     note.
+         */
+        get: operations["list_all_frames"];
         put?: never;
         post?: never;
         delete?: never;
@@ -836,12 +861,33 @@ export interface paths {
         };
         /**
          * List Requests
-         * @description Own requests; Operators may list everyone's with `all_users=true`.
+         * @description Own requests, newest first.
          */
         get: operations["list_requests"];
         put?: never;
         /** Create Request */
         post: operations["create_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/material-requests/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List All Requests
+         * @description All users' requests, one page at a time (§9.5). `q` is a request number or part of the
+         *     user's name.
+         */
+        get: operations["list_all_requests"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1756,6 +1802,39 @@ export interface components {
             /** Text */
             text: string | null;
         };
+        /** Page[Frame] */
+        Page_Frame_: {
+            /** Items */
+            items: components["schemas"]["Frame"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** Page[MaterialRequest] */
+        Page_MaterialRequest_: {
+            /** Items */
+            items: components["schemas"]["MaterialRequest"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** Page[User] */
+        Page_User_: {
+            /** Items */
+            items: components["schemas"]["User"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** PlacedSample */
         PlacedSample: {
             /** Position */
@@ -2480,7 +2559,14 @@ export interface operations {
     };
     list_users: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                page_size?: number;
+                q?: string | null;
+                role?: components["schemas"]["Role"] | null;
+                sort?: "name" | "affiliation";
+                order?: "asc" | "desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2493,7 +2579,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["User"][];
+                    "application/json": components["schemas"]["Page_User_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2793,6 +2888,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Frame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_frames: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                q?: string | null;
+                state?: components["schemas"]["FrameState"] | null;
+                sort?: "barcode";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Frame_"];
                 };
             };
             /** @description Validation Error */
@@ -3797,7 +3928,6 @@ export interface operations {
         parameters: {
             query?: {
                 state?: components["schemas"]["RequestState"] | null;
-                all_users?: boolean;
             };
             header?: never;
             path?: never;
@@ -3845,6 +3975,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_requests: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                q?: string | null;
+                state?: components["schemas"]["RequestState"] | null;
+                sort?: "number";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MaterialRequest_"];
                 };
             };
             /** @description Validation Error */

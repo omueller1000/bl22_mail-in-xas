@@ -164,7 +164,7 @@ async def test_operator_lists_and_reads_users(client: AsyncClient) -> None:
     await login_as(client, orcid(2), role="operator")
 
     listed = (await client.get(f"{API}/users")).json()
-    assert {u["orcid"] for u in listed} == {orcid(1), orcid(2)}
+    assert {u["orcid"] for u in listed["items"]} == {orcid(1), orcid(2)}
     single = await client.get(f"{API}/users/{user['id']}")
     assert single.json()["email"] == PROFILE["email"]
     assert (await client.get(f"{API}/users/not-an-id")).status_code == 404

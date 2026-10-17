@@ -1,6 +1,6 @@
 """Frame and barcode endpoints: reserve, list, look up, ship (requirements §6, §9.3)."""
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, status
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -18,6 +18,17 @@ from app.frames.states import FrameState
 from app.frames.views import frame_model, frame_models
 from app.mail import notify
 from app.material_requests import repository as material_requests
+from app.pagination import (
+    Page,
+    PageNumber,
+    PageSize,
+    Search,
+    SortOrder,
+    contains,
+    find_page,
+    search_text,
+    starts_with,
+)
 from app.users import repository as users
 
 router = APIRouter(prefix="/frames", tags=["frames"])
@@ -43,6 +54,37 @@ async def list_frames(
     if state:
         query["state"] = state.value
     return await frame_models(db, await frames.find(db, query))
+
+
+@router.get("/all")
+async def list_all_frames(
+    _: Operator,
+    db: Db,
+    page: PageNumber = 1,
+    page_size: PageSize = 50,
+    q: Search = None,
+    state: FrameState | None = None,
+    sort: Literal["barcode"] = "barcode",
+    order: SortOrder = "asc",
+) -> Page[Frame]:
+    """All users' frames, one page at a time (§9.5). Without `state`, reserved barcodes are left
+    out (they have no owner yet). `q` matches the start of the barcode, the owner's name or the
+    note."""
+    query: dict[str, Any] = (
+        {"state": state.value} if state else {"state": {"$ne": FrameState.RESERVED.value}}
+    )
+    text = search_text(q)
+    if text:
+        query["$or"] = [
+            {"_id": starts_with(frames.normalize_barcode(text))},
+            {"owner_id": {"$in": await users.ids_with_name(db, text)}},
+            {"note": contains(text)},
+        ]
+    sort_field = {"barcode": "_id"}[sort]
+    docs, total = await find_page(
+        db[frames.COLLECTION], query, sort=sort_field, order=order, page=page, page_size=page_size
+    )
+    return Page(items=await frame_models(db, docs), total=total, page=page, page_size=page_size)
 
 
 @router.get("/shipping")

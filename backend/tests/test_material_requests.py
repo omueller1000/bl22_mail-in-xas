@@ -101,9 +101,7 @@ async def test_users_see_only_their_own_requests(client: AsyncClient) -> None:
     await login_as(client, orcid(2))
     assert (await client.get(f"{API}/material-requests")).json() == []
     assert (await client.get(f"{API}/material-requests/{mine['id']}")).status_code == 403
-    assert (
-        await client.get(f"{API}/material-requests", params={"all_users": True})
-    ).status_code == 403
+    assert (await client.get(f"{API}/material-requests/all")).status_code == 403
 
 
 async def test_operator_rejects_request(client: AsyncClient) -> None:
@@ -264,8 +262,8 @@ async def test_shipping_requires_operator(client: AsyncClient) -> None:
 
 
 async def requests_of(client: AsyncClient, user_orcid: str) -> list[dict[str, Any]]:
-    response = await client.get(f"{API}/material-requests", params={"all_users": True})
-    return [r for r in response.json() if r["user"]["orcid"] == user_orcid]
+    response = await client.get(f"{API}/material-requests/all")
+    return [r for r in response.json()["items"] if r["user"]["orcid"] == user_orcid]
 
 
 async def test_request_fulfilled_when_its_frames_ship(client: AsyncClient) -> None:

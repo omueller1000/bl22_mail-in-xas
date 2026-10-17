@@ -396,6 +396,7 @@ Table of all frames in internal storage and their positions: barcode, container,
 - Barcode reservation: generate N new codes (`reserved`) and list them for printing.
 - All frames, filterable by state and user; frame detail with state history.
 - Warnings list (§6.7).
+- **Server-side paging** for the lists that grow with every user: All Frames, All Users and Material Requests (operator). The server searches, filters, sorts and pages (`page`, `page_size` 25/50/100, max 200, `q`, `sort`, `order`) and returns one page with the total number of matches; the search waits for a pause in typing (0.3 s). Search: All Frames by start of the barcode, owner name or note; All Users by name, ORCID iD, email or affiliation (filter by role); Material Requests by request number or user name. A user's own lists (My Samples, the sample picker, My Frames, own requests) stay unpaged until they grow large.
 
 ---
 

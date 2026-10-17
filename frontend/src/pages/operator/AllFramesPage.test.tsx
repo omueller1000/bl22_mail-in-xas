@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -30,10 +30,22 @@ const FRAME: Frame = {
   ],
 };
 
+function page(items: Frame[], total = items.length) {
+  return { items, total, page: 1, page_size: 50 };
+}
+
+/** The query parameters of the frame-list requests, in order. */
+function frameQueries(fetchMock: ReturnType<typeof mockApi>) {
+  return fetchMock.mock.calls
+    .map(([request]) => new URL(request.url))
+    .filter((url) => url.pathname.endsWith("/frames/all"))
+    .map((url) => Object.fromEntries(url.searchParams));
+}
+
 describe("AllFramesPage", () => {
   it("shows when each frame entered its current status", async () => {
     mockApi({
-      "GET /frames": () => json([FRAME]),
+      "GET /frames/all": () => json(page([FRAME])),
       "GET /plate-types": () => json([]),
     });
     renderWithProviders(<AllFramesPage />);
@@ -43,5 +55,43 @@ describe("AllFramesPage", () => {
     const since = within(row).getByText(new Date("2026-10-07T12:00:00Z").toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }));
     await userEvent.hover(since);
     expect(await screen.findByText(/by Control software/)).toBeInTheDocument();
+  });
+
+  it("pages, searches, filters and sorts on the server", async () => {
+    const fetchMock = mockApi({
+      "GET /frames/all": (request) => {
+        const p = Number(new URL(request.url).searchParams.get("page"));
+        const barcode = p === 2 ? "BBBB-BBBB" : "AAAA-AAAA";
+        return json({ ...page([{ ...FRAME, barcode }], 120), page: p });
+      },
+      "GET /plate-types": () => json([]),
+    });
+    renderWithProviders(<AllFramesPage />);
+
+    expect(await screen.findByText("1–1 of 120")).toBeInTheDocument();
+    expect(frameQueries(fetchMock)[0]).toEqual({ page: "1", page_size: "50", sort: "barcode", order: "asc" });
+
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    expect(await screen.findByText("BBBB-BBBB")).toBeInTheDocument();
+    expect(screen.getByText("51–51 of 120")).toBeInTheDocument();
+
+    // Searching starts again at page 1, once typing pauses.
+    await userEvent.type(screen.getByRole("textbox", { name: "Search frames" }), "ada");
+    await waitFor(() => expect(frameQueries(fetchMock).at(-1)).toMatchObject({ q: "ada", page: "1" }));
+    expect(frameQueries(fetchMock).filter((q) => q.q)).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "Sort by Barcode" }));
+    await waitFor(() => expect(frameQueries(fetchMock).at(-1)).toMatchObject({ order: "desc" }));
+    expect(screen.getByRole("columnheader", { name: /Barcode/ })).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("says when nothing matches", async () => {
+    mockApi({
+      "GET /frames/all": () => json(page([])),
+      "GET /plate-types": () => json([]),
+    });
+    renderWithProviders(<AllFramesPage />);
+    expect(await screen.findByText("No frames.")).toBeInTheDocument();
+    expect(screen.getByText("0 in total")).toBeInTheDocument();
   });
 });

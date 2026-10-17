@@ -9,6 +9,7 @@ from pymongo import ASCENDING, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from app.db import Database
+from app.pagination import contains
 from app.roles import Role
 from app.users.models import Profile, User
 
@@ -21,6 +22,7 @@ class OrcidAlreadyRegistered(Exception):
 
 async def ensure_indexes(db: Database) -> None:
     await db[COLLECTION].create_index([("orcid", ASCENDING)], unique=True)
+    await db[COLLECTION].create_index([("name", ASCENDING)])
 
 
 def email_confirmed(doc: dict[str, Any]) -> bool:
@@ -46,6 +48,11 @@ async def get_by_id(db: Database, user_id: ObjectId) -> dict[str, Any] | None:
 async def get_many(db: Database, user_ids: set[ObjectId]) -> dict[ObjectId, dict[str, Any]]:
     docs = await db[COLLECTION].find({"_id": {"$in": list(user_ids)}}).to_list()
     return {doc["_id"]: doc for doc in docs}
+
+
+async def ids_with_name(db: Database, text: str) -> list[ObjectId]:
+    """Users whose name contains the text (case-insensitive), for searching their records."""
+    return await db[COLLECTION].distinct("_id", {"name": contains(text)})
 
 
 async def get_by_orcid(db: Database, orcid: str) -> dict[str, Any] | None:
@@ -106,7 +113,3 @@ async def set_role(db: Database, user_id: ObjectId, role: Role) -> dict | None:
         {"$set": {"role": role.value, "updated_at": datetime.now(UTC)}},
         return_document=ReturnDocument.AFTER,
     )
-
-
-async def list_all(db: Database) -> list[dict[str, Any]]:
-    return await db[COLLECTION].find().sort("name", ASCENDING).to_list()

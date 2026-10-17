@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { SortOrder } from "../components/paging";
 import {
   api,
   type FrameState,
@@ -23,12 +24,29 @@ export function usePlateTypes() {
   });
 }
 
-/** Own requests, or (Operators, `allUsers`) everyone's, optionally filtered by state. */
-export function useMaterialRequests(options: { allUsers?: boolean; state?: RequestState } = {}) {
-  const query = { all_users: options.allUsers ?? false, state: options.state };
+/** Own requests, optionally filtered by state. */
+export function useMaterialRequests(options: { state?: RequestState } = {}) {
+  const query = { state: options.state };
   return useQuery({
     queryKey: [...KEYS.requests, query],
     queryFn: async () => unwrap(await api.GET("/material-requests", { params: { query } })),
+  });
+}
+
+/** One page of all users' requests (Operators). */
+export function useAllMaterialRequests(params: {
+  page: number;
+  page_size: number;
+  sort: "number";
+  order: SortOrder;
+  q?: string;
+  state?: RequestState;
+}) {
+  return useQuery({
+    queryKey: [...KEYS.requests, "all", params],
+    queryFn: async () =>
+      unwrap(await api.GET("/material-requests/all", { params: { query: params } })),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -90,6 +108,22 @@ export function useFrames(options: { allUsers?: boolean; state?: FrameState } = 
   return useQuery({
     queryKey: [...KEYS.frames, query],
     queryFn: async () => unwrap(await api.GET("/frames", { params: { query } })),
+  });
+}
+
+/** One page of all users' frames (Operators); reserved barcodes only with that state. */
+export function useAllFrames(params: {
+  page: number;
+  page_size: number;
+  sort: "barcode";
+  order: SortOrder;
+  q?: string;
+  state?: FrameState;
+}) {
+  return useQuery({
+    queryKey: [...KEYS.frames, "all", params],
+    queryFn: async () => unwrap(await api.GET("/frames/all", { params: { query: params } })),
+    placeholderData: keepPreviousData,
   });
 }
 
