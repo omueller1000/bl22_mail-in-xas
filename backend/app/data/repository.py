@@ -30,6 +30,8 @@ async def ensure_indexes(db: Database) -> None:
     await db[SWEEPS].create_index([("frame", ASCENDING)])
     await db[SWEEPS].create_index([("sample_id", ASCENDING)])
     await db[SWEEPS].create_index([("owner_id", ASCENDING)])
+    # Admin -> Status counts the recent uploads.
+    await db[SWEEPS].create_index([("uploaded_at", ASCENDING)])
 
 
 async def last_numbers(

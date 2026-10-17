@@ -60,3 +60,15 @@ export function formatDate(iso: string): string {
     day: "numeric",
   });
 }
+
+/** Decimal units, as disk sizes are usually quoted. */
+export function formatBytes(bytes: number): string {
+  const units = ["B", "kB", "MB", "GB", "TB", "PB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  return `${unit === 0 ? value : value.toFixed(value < 10 ? 2 : 1)} ${units[unit]}`;
+}

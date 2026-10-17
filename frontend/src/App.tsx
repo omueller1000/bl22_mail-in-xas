@@ -7,6 +7,7 @@ import { AccountPage } from "./pages/AccountPage";
 import { DataPage } from "./pages/DataPage";
 import { EmailPage } from "./pages/admin/EmailPage";
 import { ServiceClientsPage } from "./pages/admin/ServiceClientsPage";
+import { StatusPage } from "./pages/admin/StatusPage";
 import { XasParametersPage } from "./pages/admin/XasParametersPage";
 import { FrameConfigPage } from "./pages/FrameConfigPage";
 import { FramesPage } from "./pages/FramesPage";
@@ -65,6 +66,7 @@ const router = createBrowserRouter(
                 { path: "admin/service-clients", element: <ServiceClientsPage /> },
                 { path: "admin/xas-parameters", element: <XasParametersPage /> },
                 { path: "admin/email", element: <EmailPage /> },
+                { path: "admin/status", element: <StatusPage /> },
               ],
             },
           ],

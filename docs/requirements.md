@@ -540,6 +540,8 @@ Overlay across different measurements or positions is not required.
 - Typical sweep records are well below MongoDB's 16 MB document limit; arrays are stored in a separate collection from frame/measurement documents so frequent queries stay small.
 - MSDS PDFs are stored in GridFS (or a dedicated collection).
 - No embargo, no retention policy, no deletion of raw data.
+- Version 2 keeps all data in MongoDB. The MongoDB server's disk is limited; moving the sweep data out of MongoDB (files) is planned for version 3.
+- **Admin → Status** shows the MongoDB disk (used, free, total; yellow from 80 %, red from 90 %), the size of the portal's database and of each collection, and the sweeps uploaded in the last 30 days with the time until the disk is full at that rate. The disk figures are those of the whole MongoDB server, which other databases share. The page can later show other system information.
 
 ---
 

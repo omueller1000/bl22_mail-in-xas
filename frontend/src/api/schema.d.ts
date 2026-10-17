@@ -1190,6 +1190,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Status */
+        get: operations["get_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1292,6 +1309,36 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CollectionSize */
+        CollectionSize: {
+            /** Name */
+            name: string;
+            /** Documents */
+            documents: number;
+            /** Data Bytes */
+            data_bytes: number;
+            /** Storage Bytes */
+            storage_bytes: number;
+            /** Index Bytes */
+            index_bytes: number;
+        };
+        /** DatabaseStatus */
+        DatabaseStatus: {
+            /** Name */
+            name: string;
+            /** Mongodb Version */
+            mongodb_version: string;
+            disk: components["schemas"]["Disk"];
+            /** Data Bytes */
+            data_bytes: number;
+            /** Storage Bytes */
+            storage_bytes: number;
+            /** Index Bytes */
+            index_bytes: number;
+            /** Collections */
+            collections: components["schemas"]["CollectionSize"][];
+            growth: components["schemas"]["Growth"];
+        };
         /** DeclareSafe */
         DeclareSafe: {
             /** Version */
@@ -1314,6 +1361,13 @@ export interface components {
             /** Name */
             name?: string | null;
             role?: components["schemas"]["Role"] | null;
+        };
+        /** Disk */
+        Disk: {
+            /** Used Bytes */
+            used_bytes: number;
+            /** Total Bytes */
+            total_bytes: number;
         };
         /**
          * Edge
@@ -1390,6 +1444,17 @@ export interface components {
             kind: components["schemas"]["WarningKind"];
             /** Message */
             message: string;
+        };
+        /** Growth */
+        Growth: {
+            /** Days */
+            days: number;
+            /** Sweeps */
+            sweeps: number;
+            /** Bytes */
+            bytes: number;
+            /** Days Until Full */
+            days_until_full: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2114,6 +2179,19 @@ export interface components {
             };
             /** Channels */
             channels: components["schemas"]["Channel"][];
+        };
+        /** SystemStatus */
+        SystemStatus: {
+            /** Version */
+            version: string;
+            /** Environment */
+            environment: string;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            database: components["schemas"]["DatabaseStatus"];
         };
         /**
          * Technique
@@ -4543,6 +4621,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
                 };
             };
         };

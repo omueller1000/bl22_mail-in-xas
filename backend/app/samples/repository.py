@@ -59,7 +59,12 @@ async def list_for_owner(
     if not include_archived:
         query["archived"] = False
     # Newest first, as in the sample picker (§8.1).
-    return await db[COLLECTION].find(query).sort("created_at", DESCENDING).to_list()
+    return (
+        await db[COLLECTION]
+        .find(query)
+        .sort([("created_at", DESCENDING), ("_id", DESCENDING)])
+        .to_list()
+    )
 
 
 async def update(db: Database, sample_id: ObjectId, changes: dict[str, Any]) -> dict | None:

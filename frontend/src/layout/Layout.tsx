@@ -8,6 +8,7 @@ import {
   IconClipboardList,
   IconDirectionSign,
   IconFlask,
+  IconHeartbeat,
   IconHome,
   IconMail,
   IconPackage,
@@ -82,6 +83,7 @@ const NAV_ITEMS: NavItem[] = [
     section: "Admin",
   },
   { to: "/admin/email", label: "Email", icon: IconMail, role: "admin", section: "Admin" },
+  { to: "/admin/status", label: "Status", icon: IconHeartbeat, role: "admin", section: "Admin" },
 ];
 
 export function Layout() {
