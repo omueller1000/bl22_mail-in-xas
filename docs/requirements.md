@@ -562,12 +562,17 @@ Overlay across different measurements or positions is not required.
 | Browser support | Current versions of Chrome, Firefox, Edge, Safari. |
 | Availability | Best effort; no formal uptime requirement. |
 
-### 12.1 Deployment facts needed from the SLAC reverse-proxy owners
+### 12.1 SLAC reverse proxy (tested 2026-10-17 with `tools/proxy_probe.py`)
 
-- Is the whole `/mail-in-xas/` tree forwarded unchanged (path not stripped), including `/mail-in-xas/dev/`?
-- Are `X-Forwarded-For` and `X-Forwarded-Proto` set?
-- Proxy IP address (to deny `/dev/` and `/api/instrument/` for proxied requests).
-- Request size limit and timeouts (≥ 1 MB uploads, ≥ 10 MB downloads).
+SLAC's reverse proxy (HAProxy, load balanced) terminates TLS and forwards
+`https://www-ssrl.slac.stanford.edu/mail-in-xas/` to port 80 of the app VM over plain HTTP.
+
+| Question | Result |
+|---|---|
+| Path forwarded unchanged? | Yes, the whole `/mail-in-xas/` tree including `/mail-in-xas/dev/` and query strings. Dev must therefore be blocked by our nginx. |
+| Headers | `Host` and `X-Forwarded-Host` = `www-ssrl.slac.stanford.edu`, `X-Forwarded-Proto: https`, `X-Forwarded-URI`, `x-client-ip` (client address). `X-Forwarded-For` arrives as one header line per hop; nginx joins them. The backend does not depend on these headers (cookie security and the ORCID callback come from settings). |
+| Proxy address | All test requests came from one address (set on the VM only; not in this public repository). Other nodes of the load-balanced proxy may use others: asked the proxy owners. nginx therefore also treats any request with `X-Forwarded-Host` as proxied, so dev and the instrument API stay closed if the addresses change. |
+| Limits | 12 MB upload passed, 20 MB download passed, no timeout up to 150 s (needed: 12 MB uploads, ~10 MB downloads, 120 s). Upper limits: asked the proxy owners. |
 
 ---
 

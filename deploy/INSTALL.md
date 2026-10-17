@@ -137,6 +137,21 @@ sudo systemctl enable ht-xas@dev
 
 ## 9. nginx
 
+The portal's configuration replaces whatever nginx served before. Disable other site
+configurations by renaming them (nginx only reads `/etc/nginx/conf.d/*.conf`), so they can be
+restored later:
+
+```bash
+ls /etc/nginx/conf.d/
+sudo mv /etc/nginx/conf.d/<old>.conf /etc/nginx/conf.d/<old>.conf.off
+grep -n "include" /etc/nginx/nginx.conf     # is sites-enabled included? (not by default)
+```
+
+`/etc/nginx/sites-available/` is only used if `nginx.conf` includes `sites-enabled/` and the file
+is linked there; then remove the link in `sites-enabled/` (the file in `sites-available/` can
+stay). Also check that `nginx.conf` itself has no `server` block with `listen 80 default_server`
+(`sudo nginx -t` reports the conflict); comment it out if it has.
+
 ```bash
 sudo cp /SSRL_LOCAL_OM/ht-xas/dev/deploy/nginx/mail-in-xas.conf /etc/nginx/conf.d/
 sudo vi /etc/nginx/conf.d/mail-in-xas.conf     # replace PROXY_IP (see below)
@@ -145,13 +160,19 @@ sudo systemctl enable --now nginx
 sudo systemctl reload nginx
 ```
 
-`PROXY_IP` is the address of the SLAC reverse proxy. Requests from it may not reach the dev
-environment or the instrument API. Until it is known, use a placeholder that matches nothing,
-e.g. `192.0.2.1` (a documentation address); then dev works directly on the VM, and production
-must not be opened to the proxy yet.
+`PROXY_IP` is the address the SLAC reverse proxy connects from (the `client` shown by
+`tools/proxy_probe.py`, see requirements §12.1); SLAC's HAProxy is load balanced, so list every
+address its owners name, one line each, or their range in CIDR form. Do not commit the address:
+the repository is public. Requests from it, and any request carrying `X-Forwarded-Host` (which the
+proxy always adds), may not reach the dev environment or the instrument API; the header check
+keeps them closed even if the proxy's addresses change.
 
-If nginx already serves something else on this VM, check that its configuration does not
-claim `default_server` on port 80 too (`sudo nginx -t` reports a conflict).
+Check that the block works (both must print 404 and 403):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -H "X-Forwarded-Host: test" http://localhost/mail-in-xas/dev/
+curl -s -o /dev/null -w "%{http_code}\n" -H "X-Forwarded-Host: test" http://localhost/mail-in-xas/api/instrument/queue
+```
 
 ## 10. Deploy
 
@@ -177,8 +198,9 @@ Both should print `"status":"ok","database":"ok"`. Then open
 
 ## 12. Production
 
-Once the SLAC proxy owners have answered (path forwarding, headers, proxy IP, limits), the
-proxy IP is set in step 9 and `/etc/ht-xas/prod.env` is filled in:
+The SLAC proxy already forwards `/mail-in-xas/` to port 80 of the VM (tested 2026-10-17,
+requirements §12.1). Once its owners have confirmed the proxy addresses, they are set in step 9
+and `/etc/ht-xas/prod.env` is filled in:
 
 ```bash
 sudo systemctl enable ht-xas@prod
