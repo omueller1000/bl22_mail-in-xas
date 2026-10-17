@@ -276,6 +276,21 @@ async def release(barcode: str, operator: Operator, db: Db) -> Frame:
     return await frame_model(db, updated)
 
 
+class MeasurementProgress(BaseModel):
+    pending: int
+    done: int
+    error: int
+
+
+class FailedMeasurement(BaseModel):
+    position: str
+    number: int
+    technique: str
+    element: str
+    edge: str
+    message: str | None
+
+
 class StoredFrame(BaseModel):
     barcode: str
     container: int
@@ -288,6 +303,9 @@ class StoredFrame(BaseModel):
     since: datetime | None
     # Distinct "<element> <edge>" of all the frame's measurements, e.g. ["Cu K", "Ta L3"].
     edges: list[str]
+    measurements: MeasurementProgress
+    # Measurements the control software could not do; the frame waits for a decision.
+    failed: list[FailedMeasurement]
 
 
 @router.get("/storage/internal")
@@ -295,7 +313,9 @@ async def internal_storage(_: Operator, db: Db) -> list[StoredFrame]:
     """Frames occupying internal-storage slots (incl. scheduled/loaded ones), by position."""
     docs = await db[frames.COLLECTION].find({"storage.container": {"$exists": True}}).to_list()
     owners = await _owners(db, docs)
-    edges = await measurements.edges_by_frame(db, [d["_id"] for d in docs])
+    barcodes = [d["_id"] for d in docs]
+    edges = await measurements.edges_by_frame(db, barcodes)
+    progress = await measurements.progress_by_frame(db, barcodes)
     rows = [
         StoredFrame(
             barcode=d["_id"],
@@ -307,10 +327,29 @@ async def internal_storage(_: Operator, db: Db) -> list[StoredFrame]:
             locked=bool(d.get("locked")),
             since=d["storage"].get("since"),
             edges=edges.get(d["_id"], []),
+            measurements=_progress(progress.get(d["_id"], ({}, []))[0]),
+            failed=[_failed(m) for m in progress.get(d["_id"], ({}, []))[1]],
         )
         for d in docs
     ]
     return sorted(rows, key=lambda r: (r.container, r.slot))
+
+
+def _progress(counts: dict[str, int]) -> MeasurementProgress:
+    return MeasurementProgress(
+        pending=counts.get("pending", 0), done=counts.get("done", 0), error=counts.get("error", 0)
+    )
+
+
+def _failed(doc: dict[str, Any]) -> FailedMeasurement:
+    return FailedMeasurement(
+        position=doc["position"],
+        number=doc["number"],
+        technique=doc["technique"],
+        element=doc["element"],
+        edge=doc["edge"],
+        message=doc.get("error_message"),
+    )
 
 
 # --- warnings (§6.7) -------------------------------------------------------------------------

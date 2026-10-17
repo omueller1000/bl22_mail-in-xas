@@ -74,6 +74,25 @@ async def edges_by_frame(db: Database, barcodes: list[str]) -> dict[str, list[st
     }
 
 
+async def progress_by_frame(
+    db: Database, barcodes: list[str]
+) -> dict[str, tuple[dict[str, int], list[dict[str, Any]]]]:
+    """{barcode: ({status: count}, failed measurements by position and number)}."""
+    result: dict[str, tuple[dict[str, int], list[dict[str, Any]]]] = {}
+    fields = ["frame", "position", "number", "technique", "element", "edge", "status"]
+    cursor = (
+        db[COLLECTION]
+        .find({"frame": {"$in": barcodes}}, [*fields, "error_message"])
+        .sort([("frame", ASCENDING), ("position", ASCENDING), ("number", ASCENDING)])
+    )
+    async for doc in cursor:
+        counts, failed = result.setdefault(doc["frame"], ({}, []))
+        counts[doc["status"]] = counts.get(doc["status"], 0) + 1
+        if doc["status"] == "error":
+            failed.append(doc)
+    return result
+
+
 async def delete_for_positions(
     db: Database, session: AsyncClientSession, barcode: str, positions: set[str]
 ) -> None:

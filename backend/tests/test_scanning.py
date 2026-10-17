@@ -250,12 +250,25 @@ async def test_storage_overview(client: AsyncClient, raw_db: Any) -> None:
     await store(client, a, 1, 0)
     await store(client, b, 0, 5)
     await raw_db.frames.update_one({"_id": a}, {"$set": {"state": "scheduled"}})
+    measured = [
+        ("Left-B", 2, "Ta", "L1", "error", "Edge step too small"),
+        ("Left-A", 1, "Ta", "L3", "done", None),
+        ("Left-A", 2, "Cu", "K", "error", None),
+        ("Left-B", 1, "Cu", "K", "pending", None),
+    ]
     await raw_db.measurements.insert_many(
         [
-            {"frame": a, "position": "Left-A", "number": 1, "element": "Ta", "edge": "L3"},
-            {"frame": a, "position": "Left-A", "number": 2, "element": "Cu", "edge": "K"},
-            {"frame": a, "position": "Left-B", "number": 1, "element": "Cu", "edge": "K"},
-            {"frame": a, "position": "Left-B", "number": 2, "element": "Ta", "edge": "L1"},
+            {
+                "frame": a,
+                "position": position,
+                "number": number,
+                "technique": "xanes",
+                "element": element,
+                "edge": edge,
+                "status": status,
+                "error_message": message,
+            }
+            for position, number, element, edge, status, message in measured
         ]
     )
 
@@ -267,6 +280,14 @@ async def test_storage_overview(client: AsyncClient, raw_db: Any) -> None:
     assert rows[1]["edges"] == ["Cu K", "Ta L1", "Ta L3"]
     assert rows[0]["edges"] == []
     assert rows[1]["owner"]["name"] == "Ada Test"
+    assert rows[1]["measurements"] == {"pending": 1, "done": 1, "error": 2}
+    assert [(f["position"], f["number"], f["message"]) for f in rows[1]["failed"]] == [
+        ("Left-A", 2, None),
+        ("Left-B", 2, "Edge step too small"),
+    ]
+    assert rows[1]["failed"][1]["element"] == "Ta"
+    assert rows[0]["measurements"] == {"pending": 0, "done": 0, "error": 0}
+    assert rows[0]["failed"] == []
 
 
 async def test_storage_overview_requires_operator(client: AsyncClient) -> None:

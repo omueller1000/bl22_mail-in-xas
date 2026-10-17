@@ -388,7 +388,9 @@ Lists all `issued` frames grouped by user (with the user's shipping address and 
 
 ### 9.4 Internal storage view
 
-Table of all frames in internal storage and their positions: barcode, container, slot, state, lock flag, pending measurements. Used to find and remove processed frames.
+Table of all frames in internal storage and their positions: barcode, container, slot, state, lock flag, measurement progress ("3 done · 1 failed · 2 pending"). Used to find and remove processed frames.
+
+- A frame waiting in its slot with **failed measurements** (status `error`) is marked **red** in the grid with "N failed"; hovering lists each failed measurement (position, number, technique, edge, error message). The control software's queue only takes pending measurements, so such a frame waits for a decision by staff. No "ready to remove" marker and no warning on the Home page (decided 2026-10-16). Re-measure from the portal is not offered yet (§8.3: API only).
 
 ### 9.5 Other operator views
 

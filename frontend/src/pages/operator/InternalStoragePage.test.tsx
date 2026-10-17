@@ -18,6 +18,8 @@ const STORED: StoredFrame[] = [
     locked: true,
     since: "2026-10-13T14:05:00Z",
     edges: ["Cu K", "Ta L3"],
+    measurements: { pending: 2, done: 3, error: 0 },
+    failed: [],
   },
 ];
 
@@ -145,5 +147,44 @@ describe("InternalStoragePage", () => {
 
     expect(await screen.findByText("AAAA-AAAA released back into its slot")).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([r]) => r.url.endsWith("/frames/AAAA-AAAA/release"))).toBe(true);
+  });
+
+  it("flags frames with failed measurements and lists them on hover", async () => {
+    const failing: StoredFrame = {
+      ...STORED[0]!,
+      barcode: "FFFF-FFFF",
+      slot: 1,
+      measurements: { pending: 1, done: 2, error: 1 },
+      failed: [
+        {
+          position: "Left-B",
+          number: 2,
+          technique: "xanes",
+          element: "Ta",
+          edge: "L1",
+          message: "Edge step too small",
+        },
+      ],
+    };
+    mockApi({ "GET /storage/internal": () => json([...STORED, failing]) });
+    renderWithProviders(<InternalStoragePage />);
+
+    const slot = await screen.findByLabelText("Container 0 slot 1: FFFF-FFFF");
+    expect(slot).toHaveStyle({ background: "var(--mantine-color-red-light)" });
+    expect(screen.getByLabelText("Container 0 slot 0: AAAA-AAAA")).not.toHaveStyle({
+      background: "var(--mantine-color-red-light)",
+    });
+    await userEvent.hover(within(slot).getByText("1 failed"));
+    expect(
+      await screen.findByText("Left-B #2 · XANES · Ta L1: Edge step too small"),
+    ).toBeInTheDocument();
+
+    const table = screen.getByRole("table", { name: "Frames in internal storage" });
+    const row = within(table).getByRole("row", { name: /FFFF-FFFF/ });
+    expect(within(row).getByText("2 done")).toBeInTheDocument();
+    expect(within(row).getByText("1 failed")).toBeInTheDocument();
+    expect(within(row).getByText("· 1 pending")).toBeInTheDocument();
+    const okRow = within(table).getByRole("row", { name: /AAAA-AAAA/ });
+    expect(within(okRow).queryByText(/failed/)).not.toBeInTheDocument();
   });
 });

@@ -217,6 +217,8 @@ function OccupancyGrid({
               const frame = occupant(c, s);
               const isSelected = selected?.container === c && selected.slot === s;
               const atBeamline = frame && frame.state !== "internal_storage";
+              // Blocked: the control software gave up on some measurements; someone must decide.
+              const failed = frame && frame.failed.length > 0;
               // Warning: the scheduler skips unlocked frames, so they will not be measured.
               const notLocked = frame && !atBeamline && !frame.locked;
               const cellStyle = {
@@ -226,9 +228,11 @@ function OccupancyGrid({
                   : frame
                     ? atBeamline
                       ? `var(--mantine-color-${IN_PROGRESS_COLOR}-light)`
-                      : notLocked
-                        ? "var(--mantine-color-yellow-light)"
-                        : "var(--mantine-primary-color-light)"
+                      : failed
+                        ? "var(--mantine-color-red-light)"
+                        : notLocked
+                          ? "var(--mantine-color-yellow-light)"
+                          : "var(--mantine-primary-color-light)"
                     : undefined,
                 border: "1px solid var(--mantine-color-default-border)",
               };
@@ -264,6 +268,7 @@ function OccupancyGrid({
                       <Text size="xs" ff="monospace">
                         {frame.barcode}
                       </Text>
+                      {failed && <FailedLabel frame={frame} />}
                       {notLocked && (
                         <Tooltip label="Not locked: will not be measured until locked" withArrow>
                           <Text size="xs" fw={600} c="var(--mantine-color-yellow-light-color)">
@@ -391,6 +396,7 @@ function StoredTable({ rows }: { rows: StoredFrame[] }) {
             <Table.Th>Status</Table.Th>
             <Table.Th>Locked</Table.Th>
             <Table.Th>Edges</Table.Th>
+            <Table.Th>Measurements</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -412,10 +418,63 @@ function StoredTable({ rows }: { rows: StoredFrame[] }) {
                 <YesNoIcon value={r.locked} />
               </Table.Td>
               <Table.Td>{r.edges.join(", ") || "—"}</Table.Td>
+              <Table.Td>
+                <MeasurementProgress frame={r} />
+              </Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
+  );
+}
+
+type FailedMeasurement = StoredFrame["failed"][number];
+
+/** "Left-A #2 · XANES · Cu K: <error message>" */
+function failedText(m: FailedMeasurement): string {
+  const what = `${m.position} #${m.number} · ${m.technique.toUpperCase()} · ${m.element} ${m.edge}`;
+  return `${what}: ${m.message ?? "no error message"}`;
+}
+
+/** Red "2 failed", listing the failed measurements on hover. */
+function FailedLabel({ frame }: { frame: StoredFrame }) {
+  return (
+    <Tooltip
+      multiline
+      maw={420}
+      withArrow
+      label={
+        <Stack gap={2}>
+          {frame.failed.map((m) => (
+            <Text key={`${m.position}-${m.number}`} size="xs">
+              {failedText(m)}
+            </Text>
+          ))}
+        </Stack>
+      }
+    >
+      <Text size="xs" fw={600} c="var(--mantine-color-red-light-color)" style={{ whiteSpace: "nowrap" }}>
+        {frame.failed.length} failed
+      </Text>
+    </Tooltip>
+  );
+}
+
+/** "3 done · 1 failed · 2 pending" */
+function MeasurementProgress({ frame }: { frame: StoredFrame }) {
+  const { done, error, pending } = frame.measurements;
+  if (done + error + pending === 0) return <Text size="sm">—</Text>;
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Text size="sm">{done} done</Text>
+      {error > 0 && (
+        <>
+          <Text size="sm">·</Text>
+          <FailedLabel frame={frame} />
+        </>
+      )}
+      <Text size="sm">· {pending} pending</Text>
+    </Group>
   );
 }

@@ -1432,6 +1432,21 @@ export interface components {
             /** Code */
             code: string;
         };
+        /** FailedMeasurement */
+        FailedMeasurement: {
+            /** Position */
+            position: string;
+            /** Number */
+            number: number;
+            /** Technique */
+            technique: string;
+            /** Element */
+            element: string;
+            /** Edge */
+            edge: string;
+            /** Message */
+            message: string | null;
+        };
         /** Frame */
         Frame: {
             /** Barcode */
@@ -1728,6 +1743,15 @@ export interface components {
             detections: components["schemas"]["Option"][];
             /** Beams */
             beams: components["schemas"]["Option"][];
+        };
+        /** MeasurementProgress */
+        MeasurementProgress: {
+            /** Pending */
+            pending: number;
+            /** Done */
+            done: number;
+            /** Error */
+            error: number;
         };
         /**
          * MeasurementStatus
@@ -2190,6 +2214,9 @@ export interface components {
             since: string | null;
             /** Edges */
             edges: string[];
+            measurements: components["schemas"]["MeasurementProgress"];
+            /** Failed */
+            failed: components["schemas"]["FailedMeasurement"][];
         };
         /** StoredFrameSummary */
         StoredFrameSummary: {
