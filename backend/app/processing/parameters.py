@@ -1,8 +1,8 @@
 """Processing parameters: the defaults. Admins can override the scientific ones on the
 XAS parameters page (app.processing.settings); everything else is changed here.
 
-Energies are in eV, k in 1/Å, R in Å. E0 is not a parameter: it is the tabulated edge energy
-of the measured element and edge (app.processing.edges).
+Energies are in eV, k in 1/Å, R in Å. E0 is the tabulated edge energy of the measured element
+and edge (app.processing.edges) plus e0_shift.
 """
 
 from dataclasses import asdict, dataclass
@@ -14,6 +14,10 @@ ALGORITHM_VERSION = 1
 
 @dataclass(frozen=True)
 class Parameters:
+    # --- Edge -------------------------------------------------------------------------------
+    # Added to the tabulated edge energy; the sum is the E0 used by every step below.
+    e0_shift: float = 0.0
+
     # --- Normalisation: pre-edge and post-edge polynomials ---------------------------------
     # Pre-edge from this far into the spectrum (above its first point) ...
     pre_start_after_first: float = 10.0

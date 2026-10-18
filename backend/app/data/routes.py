@@ -15,7 +15,6 @@ from app.data.export import FrameZip
 from app.data.models import SweepInfo, sweep_info
 from app.measurements.routes import load_frame
 from app.processing import pipeline, settings
-from app.processing.edges import SOURCE as E0_SOURCE
 from app.processing.xas import ProcessingError
 from app.samples import repository as samples
 from app.users import repository as users
@@ -159,7 +158,7 @@ async def process_sweeps(
         element=measured["element"],
         edge=measured["edge"],
         e0=result.e0,
-        e0_source=E0_SOURCE,
+        e0_source=pipeline.e0_source(result),
         edge_step=result.normalization.edge_step if result.normalization else None,
         mu=PlotCurve(x=_list(c.energy), y=_list(c.mu)),
         pre_edge=on_energy(c.pre_edge),

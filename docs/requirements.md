@@ -490,7 +490,7 @@ All analog channels are always recorded, even when they carry no meaningful sign
 
 - **Input:** the spectrum selected in the viewer (§11.3; by default the one matching the detection mode) of the checked sweeps of one batch. One sweep is processed as is; **several are merged first** and the merge is processed.
 - **Steps:**
-  1. **E0** from the X-Ray Data Booklet table (https://xdb.lbl.gov) for the measurement's element and edge (not derived from the data; energy alignment comes later).
+  1. **E0** from the X-Ray Data Booklet table (https://xdb.lbl.gov) for the measurement's element and edge, plus the **E0 shift** parameter (default 0 eV, −100 to +100 eV on Admin → XAS Parameters, applies to all measurements). Not derived from the data; energy alignment comes later. The data viewer and the export headers state the tabulated value and the shift.
   2. **Normalisation:** pre-edge quadratic polynomial from 10 eV after the start of the spectrum to 40 eV below E0; post-edge cubic polynomial from 150 eV above E0 to 10 eV before the end; edge step = post-edge minus pre-edge at E0.
   3. **Background removal** (AUTOBK-like): a cubic spline in k whose coefficients minimise the Fourier components of χ below R_bkg = 1 Å.
   4. **χ(k)**, shown k²-weighted.

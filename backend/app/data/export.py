@@ -17,7 +17,6 @@ import numpy as np
 from app import __version__
 from app.data import spectra
 from app.processing import pipeline
-from app.processing.edges import SOURCE as EDGE_SOURCE
 from app.processing.parameters import Parameters
 from app.processing.xas import ProcessingError
 
@@ -145,7 +144,7 @@ def processed_xdis(sweep: dict[str, Any], sample_name: str, params: Parameters) 
     fields += [
         ("Processing.spectrum", spectrum),
         ("Processing.e0", result.e0),
-        ("Processing.e0_source", EDGE_SOURCE),
+        ("Processing.e0_source", pipeline.e0_source(result)),
     ]
     if result.normalization:
         fields.append(("Processing.edge_step", result.normalization.edge_step))

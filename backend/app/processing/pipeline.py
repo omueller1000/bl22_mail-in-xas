@@ -25,7 +25,8 @@ from app.processing.xas import (
 
 @dataclass
 class Result:
-    e0: float
+    e0: float  # tabulated edge energy + e0_shift: used by every step
+    e0_table: float
     energy: Array
     mu: Array
     normalization: Normalization | None = None
@@ -33,6 +34,13 @@ class Result:
     ft: FourierTransform | None = None
     # Why a step could not be done (e.g. a XANES scan has no EXAFS region).
     problems: list[str] = field(default_factory=list)
+
+
+def e0_source(result: Result) -> str:
+    """Where E0 comes from, e.g. "X-Ray Data Booklet ...: 8979 eV, shifted +2 eV"."""
+    text = f"{SOURCE}: {result.e0_table:g} eV"
+    shift = result.e0 - result.e0_table
+    return f"{text}, shifted {shift:+g} eV" if shift else text
 
 
 def edge_energy(element: str, edge: str) -> float:
@@ -54,7 +62,8 @@ def process(
     energy, first = np.unique(energy, return_index=True)
     mu = mu[first]
 
-    result = Result(e0=edge_energy(element, edge), energy=energy, mu=mu)
+    table = edge_energy(element, edge)
+    result = Result(e0=table + params.e0_shift, e0_table=table, energy=energy, mu=mu)
     e0 = result.e0
     try:
         result.normalization = normalize(

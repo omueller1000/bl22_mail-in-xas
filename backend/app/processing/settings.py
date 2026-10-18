@@ -31,6 +31,7 @@ class Editable:
 # The scientific parameters an admin may change, with their allowed ranges. Technical and
 # display settings (k grid, FFT size, plotted ranges) are changed in the code only.
 EDITABLE: tuple[Editable, ...] = (
+    Editable("e0_shift", "Edge", "E0 shift (added to the tabulated E0)", "eV", -100, 100),
     Editable(
         "pre_start_after_first",
         "Normalisation",

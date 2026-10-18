@@ -1,5 +1,7 @@
 """XAS processing (requirements §11.3) on a synthetic spectrum with known answers."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -31,6 +33,19 @@ def test_e0_comes_from_the_table() -> None:
     assert pipeline.edge_energy("Pb", "L3") == 13035
     with pytest.raises(ProcessingError):
         pipeline.edge_energy("Cu", "M1")
+
+
+def test_e0_shift_is_added_to_the_table_value() -> None:
+    energy, mu = synthetic_mu()
+    shifted = pipeline.process(energy, mu, "Cu", "K", replace(pipeline.DEFAULTS, e0_shift=2.5))
+    assert shifted.e0 == CU_K + 2.5
+    assert shifted.e0_table == CU_K
+    assert pipeline.e0_source(shifted).endswith(": 8979 eV, shifted +2.5 eV")
+    unshifted = pipeline.process(energy, mu, "Cu", "K")
+    assert pipeline.e0_source(unshifted).endswith(": 8979 eV")
+    # E0 sets the k scale: shifting it moves where chi(k) starts in energy.
+    assert shifted.exafs is not None and unshifted.exafs is not None
+    assert not np.allclose(shifted.exafs.chi[:50], unshifted.exafs.chi[:50])
 
 
 def test_full_processing_recovers_step_and_shell() -> None:
