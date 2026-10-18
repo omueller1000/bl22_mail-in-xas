@@ -1,4 +1,16 @@
-import { Alert, Button, Card, Group, Progress, Stack, Table, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Card,
+  ColorSwatch,
+  Group,
+  Progress,
+  Stack,
+  Table,
+  Text,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
 
 import type { components } from "../../api/schema";
@@ -14,6 +26,8 @@ const DISK_WARNING = 0.8;
 const DISK_CRITICAL = 0.9;
 // Beyond this the growth forecast is meaningless.
 const MAX_FORECAST_DAYS = 3650;
+// The portal's own database in the disk bar (other data uses the blue/yellow/red level colour).
+const OWN_COLOR = "grape";
 
 /** The state of the system; for now the capacity of the MongoDB server. */
 export function StatusPage() {
@@ -55,6 +69,11 @@ function DatabaseCard({ database, checkedAt }: { database: DatabaseStatus; check
   const color = fraction >= DISK_CRITICAL ? "red" : fraction >= DISK_WARNING ? "yellow" : "blue";
   const free = Math.max(disk.total_bytes - disk.used_bytes, 0);
   const own = database.storage_bytes + database.index_bytes;
+  const other = Math.max(disk.used_bytes - own, 0);
+  // At least a sliver, so the portal's share stays visible next to terabytes of other data.
+  const ownPercent = disk.total_bytes
+    ? Math.min(Math.max((own / disk.total_bytes) * 100, own > 0 ? 1 : 0), fraction * 100)
+    : 0;
   const daysUntilFull = growth.days_until_full ?? null;
   const fullOn =
     daysUntilFull === null
@@ -79,15 +98,30 @@ function DatabaseCard({ database, checkedAt }: { database: DatabaseStatus; check
               <b>{formatBytes(free)} free</b>
             </Text>
           </Group>
-          <Progress
-            value={fraction * 100}
-            color={color}
-            size="xl"
-            aria-label={`Disk ${Math.round(fraction * 100)}% used`}
-          />
+          <Progress.Root size="xl">
+            <Tooltip label={`This database (${database.name}): ${formatBytes(own)}`} withArrow>
+              <Progress.Section
+                value={ownPercent}
+                color={OWN_COLOR}
+                aria-label={`This database: ${formatBytes(own)}`}
+              />
+            </Tooltip>
+            <Tooltip label={`Other data on the disk: ${formatBytes(other)}`} withArrow>
+              <Progress.Section
+                value={fraction * 100 - ownPercent}
+                color={color}
+                aria-label={`Disk ${Math.round(fraction * 100)}% used`}
+              />
+            </Tooltip>
+          </Progress.Root>
+          <Group gap="md">
+            <Legend color={OWN_COLOR} label={`This database (${database.name}): ${formatBytes(own)}`} />
+            <Legend color={color} label={`Other data on the disk: ${formatBytes(other)}`} />
+            <Legend color="gray.2" label={`Free: ${formatBytes(free)}`} />
+          </Group>
           <Text c="dimmed" size="xs">
-            The disk is shared by all databases on the MongoDB server. This database (
-            {database.name}) takes {formatBytes(own)} of it. MongoDB {database.mongodb_version}.
+            The disk is shared by all databases on the MongoDB server. MongoDB{" "}
+            {database.mongodb_version}.
           </Text>
         </Stack>
         <Text size="sm">
@@ -136,5 +170,20 @@ function PortalCard({ status }: { status: SystemStatus }) {
         </Text>
       </Stack>
     </Card>
+  );
+}
+
+/** "grape" -> its filled colour, "gray.2" -> that shade. */
+function swatch(color: string): string {
+  const [name, shade] = color.split(".");
+  return shade ? `var(--mantine-color-${name}-${shade})` : `var(--mantine-color-${name}-filled)`;
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <Group gap={6} wrap="nowrap">
+      <ColorSwatch color={swatch(color)} size={12} withShadow={false} />
+      <Text size="xs">{label}</Text>
+    </Group>
   );
 }

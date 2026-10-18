@@ -1253,6 +1253,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/beamline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Beamline */
+        get: operations["get_beamline"];
+        /**
+         * Set Beamline
+         * @description Change the energy range; applies to new and changed measurements from now on.
+         */
+        put: operations["set_beamline"];
+        post?: never;
+        /**
+         * Restore Beamline
+         * @description Back to the BL 2-2 defaults in the code.
+         */
+        delete: operations["restore_beamline"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1322,6 +1347,28 @@ export interface components {
          * @enum {string}
          */
         Beam: "unfocused" | "focused";
+        /** BeamlineSettings */
+        BeamlineSettings: {
+            /** Energy Min */
+            energy_min: number;
+            /** Energy Max */
+            energy_max: number;
+            /** Default Min */
+            default_min: number;
+            /** Default Max */
+            default_max: number;
+            /** Edges Available */
+            edges_available: number;
+            /** Edges Total */
+            edges_total: number;
+        };
+        /** BeamlineUpdate */
+        BeamlineUpdate: {
+            /** Energy Min */
+            energy_min: number;
+            /** Energy Max */
+            energy_max: number;
+        };
         /** Body_upload_msds */
         Body_upload_msds: {
             /** File */
@@ -1426,6 +1473,14 @@ export interface components {
             symbol: string;
             /** Z */
             z: number;
+            /** Edges */
+            edges: components["schemas"]["ElementEdge"][];
+        };
+        /** ElementEdge */
+        ElementEdge: {
+            edge: components["schemas"]["Edge"];
+            /** Energy */
+            energy: number;
         };
         /** EmailCode */
         EmailCode: {
@@ -1743,6 +1798,10 @@ export interface components {
             detections: components["schemas"]["Option"][];
             /** Beams */
             beams: components["schemas"]["Option"][];
+            /** Energy Min */
+            energy_min: number;
+            /** Energy Max */
+            energy_max: number;
         };
         /** MeasurementProgress */
         MeasurementProgress: {
@@ -4834,6 +4893,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    get_beamline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BeamlineSettings"];
+                };
+            };
+        };
+    };
+    set_beamline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BeamlineUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BeamlineSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_beamline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BeamlineSettings"];
                 };
             };
         };

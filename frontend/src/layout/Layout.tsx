@@ -4,6 +4,7 @@ import {
   type Icon,
   IconAdjustments,
   IconApi,
+  IconBolt,
   IconBuildingWarehouse,
   IconClipboardList,
   IconDirectionSign,
@@ -82,6 +83,7 @@ const NAV_ITEMS: NavItem[] = [
     role: "admin",
     section: "Admin",
   },
+  { to: "/admin/beamline", label: "Beamline", icon: IconBolt, role: "admin", section: "Admin" },
   { to: "/admin/email", label: "Email", icon: IconMail, role: "admin", section: "Admin" },
   { to: "/admin/status", label: "Status", icon: IconHeartbeat, role: "admin", section: "Admin" },
 ];

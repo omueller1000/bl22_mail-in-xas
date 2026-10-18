@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pymongo.errors import PyMongoError
 
-from app import __version__, catalog, health
+from app import __version__, beamline, catalog, health
 from app import status as status_routes
 from app.auth import orcid, sessions
 from app.auth import routes as auth_routes
@@ -111,6 +111,7 @@ def create_app(
     app.include_router(xas_parameter_routes.router, prefix=prefix)
     app.include_router(mail_routes.router, prefix=prefix)
     app.include_router(status_routes.router, prefix=prefix)
+    app.include_router(beamline.router, prefix=prefix)
 
     return app
 

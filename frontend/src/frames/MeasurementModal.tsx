@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { type ReactNode, useState } from "react";
 
-import type { Frame, Measurement, MeasurementInput } from "../api/client";
+import type { Frame, Measurement, MeasurementInput, MeasurementOptions } from "../api/client";
 import {
   useAddMeasurement,
   useMeasurementOptions,
@@ -66,6 +66,32 @@ function rememberElementEdge({ element, edge }: Settings) {
   }
 }
 
+type Edge = Settings["edge"];
+
+// When the chosen element lacks the current edge, take the first of these it has.
+const EDGE_PREFERENCE: Edge[] = ["K", "L3", "L2", "L1"];
+
+/** Edges of the element within the beamline's energy range, with their energies. */
+function edgesOf(options: MeasurementOptions, element: string) {
+  return options.elements.find((e) => e.symbol === element)?.edges ?? [];
+}
+
+function preferredEdge(options: MeasurementOptions, element: string, current: Edge): Edge {
+  const edges = edgesOf(options, element).map((e) => e.edge);
+  if (edges.includes(current)) return current;
+  return EDGE_PREFERENCE.find((e) => edges.includes(e)) ?? current;
+}
+
+/** A remembered element/edge may no longer be measurable: fall back to one that is. */
+function measurable(options: MeasurementOptions, settings: Settings): Settings {
+  if (edgesOf(options, settings.element).some((e) => e.edge === settings.edge)) return settings;
+  const element = edgesOf(options, settings.element).length
+    ? settings.element
+    : (options.elements.find((e) => e.symbol === DEFAULTS.element) ?? options.elements[0])?.symbol;
+  if (!element) return settings;
+  return { ...settings, element, edge: preferredEdge(options, element, settings.edge) };
+}
+
 interface Props {
   frame: Frame;
   position: string;
@@ -92,18 +118,31 @@ export function MeasurementModal({ frame, position, sampleName, measurement, onC
         }
       : { ...DEFAULTS, ...lastElementEdge() },
   );
+  // New measurements must use a measurable edge; an existing one may keep its (older) edge.
+  const current = options && !measurement ? measurable(options, settings) : settings;
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
-    setSettings((s) => ({ ...s, [key]: value }));
+    setSettings({ ...current, [key]: value });
+  const setElement = (element: string) =>
+    setSettings({
+      ...current,
+      element,
+      edge: options ? preferredEdge(options, element, current.edge) : current.edge,
+    });
+  const keptEdge =
+    measurement && current.element === measurement.element && current.edge === measurement.edge;
+  const available = options ? edgesOf(options, current.element) : [];
+  const edgeInfo = available.find((e) => e.edge === current.edge);
+  const canSave = Boolean(edgeInfo) || Boolean(keptEdge);
 
   const save = () => {
     const done = {
       onSuccess: () => {
-        rememberElementEdge(settings);
+        rememberElementEdge(current);
         onClose();
       },
     };
-    if (measurement) update.mutate({ id: measurement.id, ...settings }, done);
-    else add.mutate({ position, ...settings }, done);
+    if (measurement) update.mutate({ id: measurement.id, ...current }, done);
+    else add.mutate({ position, ...current }, done);
   };
 
   return (
@@ -135,7 +174,7 @@ export function MeasurementModal({ frame, position, sampleName, measurement, onC
                   </Tooltip>
                 ),
               }))}
-              value={settings.technique}
+              value={current.technique}
               onChange={(v) => set("technique", v as Settings["technique"])}
             />
           </Stack>
@@ -144,27 +183,43 @@ export function MeasurementModal({ frame, position, sampleName, measurement, onC
               label="Element"
               searchable
               allowDeselect={false}
-              data={options.elements.map((e) => ({ value: e.symbol, label: `${e.symbol} (${e.z})` }))}
-              value={settings.element}
-              onChange={(v) => v && set("element", v)}
-              nothingFoundMessage="Only Ti to Bi"
+              data={[
+                ...options.elements.map((e) => ({ value: e.symbol, label: `${e.symbol} (${e.z})` })),
+                // An existing measurement whose element is no longer in range keeps showing it.
+                ...(available.length === 0
+                  ? [{ value: current.element, label: `${current.element} (outside range)` }]
+                  : []),
+              ]}
+              value={current.element}
+              onChange={(v) => v && setElement(v)}
+              nothingFoundMessage={`No element with an edge between ${options.energy_min / 1000} and ${options.energy_max / 1000} keV`}
             />
             <Stack gap={4}>
               <Text size="sm" fw={500}>
                 Edge
               </Text>
               <SegmentedControl
-                data={options.edges}
-                value={settings.edge}
-                onChange={(v) => set("edge", v as Settings["edge"])}
+                data={options.edges.map((e) => ({
+                  ...e,
+                  disabled:
+                    !available.some((a) => a.edge === e.value) &&
+                    !(keptEdge && e.value === current.edge),
+                }))}
+                value={current.edge}
+                onChange={(v) => set("edge", v as Edge)}
               />
+              <Text size="xs" c={edgeInfo ? "dimmed" : "red"}>
+                {edgeInfo
+                  ? `E0 = ${edgeInfo.energy.toLocaleString()} eV`
+                  : `Outside the beamline's range (${options.energy_min / 1000}–${options.energy_max / 1000} keV)`}
+              </Text>
             </Stack>
           </Group>
           <Select
             label="Detection"
             allowDeselect={false}
             data={options.detections}
-            value={settings.detection}
+            value={current.detection}
             onChange={(v) => v && set("detection", v as Settings["detection"])}
           />
           <Stack gap={4}>
@@ -180,7 +235,7 @@ export function MeasurementModal({ frame, position, sampleName, measurement, onC
                   </Tooltip>
                 ),
               }))}
-              value={settings.beam ?? "unfocused"}
+              value={current.beam ?? "unfocused"}
               onChange={(v) => set("beam", v as Settings["beam"])}
             />
           </Stack>
@@ -195,7 +250,7 @@ export function MeasurementModal({ frame, position, sampleName, measurement, onC
             <Button variant="default" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={save} loading={mutation.isPending}>
+            <Button onClick={save} loading={mutation.isPending} disabled={!canSave}>
               {measurement ? "Save" : "Add measurement"}
             </Button>
           </Group>

@@ -25,10 +25,22 @@ const OPTIONS = {
     { value: "xanes", label: "XANES" },
     { value: "exafs", label: "EXAFS" },
   ],
+  // As limited by a 4.7-33 keV beamline.
   elements: [
-    { symbol: "Fe", z: 26 },
-    { symbol: "Cu", z: 29 },
+    { symbol: "Fe", z: 26, edges: [{ edge: "K", energy: 7112 }] },
+    { symbol: "Cu", z: 29, edges: [{ edge: "K", energy: 8979 }] },
+    {
+      symbol: "Pb",
+      z: 82,
+      edges: [
+        { edge: "L1", energy: 15861 },
+        { edge: "L2", energy: 15200 },
+        { edge: "L3", energy: 13035 },
+      ],
+    },
   ],
+  energy_min: 4700,
+  energy_max: 33000,
   edges: ["K", "L1", "L2", "L3"].map((e) => ({ value: e, label: e })),
   detections: [
     { value: "transmission", label: "Transmission" },
@@ -270,13 +282,38 @@ describe("FrameConfigPage", () => {
   });
 
   it("starts new measurements with the last saved element and edge", async () => {
+    localStorage.setItem("ht-xas.lastElementEdge", JSON.stringify({ element: "Pb", edge: "L2" }));
+    renderPage(frame());
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add measurement" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "New measurement at Left-A" });
+    expect(within(dialog).getByRole("combobox", { name: "Element" })).toHaveValue("Pb (82)");
+    expect(within(dialog).getByRole("radio", { name: "L2" })).toBeChecked();
+    localStorage.clear();
+  });
+
+  it("falls back when the last saved edge is outside the beamline's range", async () => {
     localStorage.setItem("ht-xas.lastElementEdge", JSON.stringify({ element: "Cu", edge: "L3" }));
     renderPage(frame());
     await userEvent.click((await screen.findAllByRole("button", { name: "Add measurement" }))[0]!);
     const dialog = await screen.findByRole("dialog", { name: "New measurement at Left-A" });
     expect(within(dialog).getByRole("combobox", { name: "Element" })).toHaveValue("Cu (29)");
-    expect(within(dialog).getByRole("radio", { name: "L3" })).toBeChecked();
+    expect(within(dialog).getByRole("radio", { name: "K" })).toBeChecked();
     localStorage.clear();
+  });
+
+  it("offers only the element's edges within the beamline's range", async () => {
+    renderPage(frame());
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add measurement" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "New measurement at Left-A" });
+    expect(within(dialog).getByText("E0 = 7,112 eV")).toBeInTheDocument();
+    expect(within(dialog).getByRole("radio", { name: "L3" })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Element" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Pb (82)" }));
+    // Pb K (88 keV) is out of range: the edge moves to L3.
+    expect(within(dialog).getByRole("radio", { name: "L3" })).toBeChecked();
+    expect(within(dialog).getByRole("radio", { name: "K" })).toBeDisabled();
+    expect(within(dialog).getByText("E0 = 13,035 eV")).toBeInTheDocument();
   });
 
   it("lists what is missing and declares safe only after confirming", async () => {

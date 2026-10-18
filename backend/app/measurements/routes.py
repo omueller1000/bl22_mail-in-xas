@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 from pymongo.asynchronous.client_session import AsyncClientSession
 
+from app import beamline
 from app.auth.dependencies import CurrentUser, Db, is_operator
 from app.frames import configuration as config
 from app.frames import repository as frames
@@ -13,15 +14,22 @@ from app.frames.repository import actor
 from app.frames.versioning import in_transaction, save_versioned
 from app.measurements import repository as measurements
 from app.measurements.models import Measurement, MeasurementInput, MeasurementStatus, to_model
-from app.measurements.options import OPTIONS, MeasurementOptions
+from app.measurements.options import MeasurementOptions, options_for
 from app.users import repository as users
 
 router = APIRouter(tags=["measurements"])
 
 
 @router.get("/measurement-options")
-async def measurement_options(_: CurrentUser) -> MeasurementOptions:
-    return OPTIONS
+async def measurement_options(_: CurrentUser, db: Db) -> MeasurementOptions:
+    allowed = await beamline.energy_range(db)
+    return options_for(allowed.energy_min, allowed.energy_max)
+
+
+async def _ensure_measurable(db: Db, element: str, edge: str) -> None:
+    problem = beamline.out_of_range_message(element, edge, await beamline.energy_range(db))
+    if problem:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
 
 
 @router.get("/frames/{barcode}/measurements")
@@ -39,6 +47,7 @@ async def add_measurement(
 ) -> Measurement:
     frame = await load_frame(db, barcode, user)
     _ensure_editable(frame)
+    await _ensure_measurable(db, body.element, body.edge.value)
     if not any(p["position"] == position for p in frame.get("positions", [])):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, f"Place a sample at {position} first"
@@ -81,6 +90,9 @@ async def update_measurement(
     """Change a measurement's settings. Data already collected keeps its own metadata."""
     doc, frame = await _load_measurement(db, measurement_id, user)
     _ensure_editable(frame)
+    # Measurements made before the range changed stay valid as long as their edge is kept.
+    if (body.element, body.edge.value) != (doc["element"], doc["edge"]):
+        await _ensure_measurable(db, body.element, body.edge.value)
     changes = {**_settings(body), "updated_at": datetime.now(UTC), "changed_by": actor(user)}
 
     async def apply(session: AsyncClientSession) -> dict[str, Any]:

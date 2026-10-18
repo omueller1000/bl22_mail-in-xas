@@ -9,7 +9,7 @@ export function useMeasurementOptions() {
   return useQuery({
     queryKey: ["measurement-options"],
     queryFn: async () => unwrap(await api.GET("/measurement-options")),
-    staleTime: Infinity, // fixed presets
+    staleTime: 5 * 60_000, // admins may change the beamline's energy range
   });
 }
 

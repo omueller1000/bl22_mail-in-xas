@@ -1,5 +1,6 @@
 import pytest
 
+from app import __version__
 from app.main import create_app
 from tests.conftest import UNREACHABLE_MONGODB_URI, app_client, make_settings
 
@@ -25,7 +26,7 @@ async def test_health_ok_with_database() -> None:
         "status": "ok",
         "database": "ok",
         "environment": "local",
-        "version": "0.1.0",
+        "version": __version__,
     }
 
 

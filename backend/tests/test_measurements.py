@@ -63,15 +63,53 @@ async def lock(client: AsyncClient, code: str, action: str = "lock") -> Any:
 # --- options ---------------------------------------------------------------------------------
 
 
+def edges_of(options: dict[str, Any], symbol: str) -> list[str] | None:
+    element = next((e for e in options["elements"] if e["symbol"] == symbol), None)
+    return None if element is None else [x["edge"] for x in element["edges"]]
+
+
 async def test_options(client: AsyncClient) -> None:
     await login_as(client, orcid(1))
     options = (await client.get(f"{API}/measurement-options")).json()
     symbols = [e["symbol"] for e in options["elements"]]
     assert symbols[0] == "Ti" and symbols[-1] == "Bi"
-    assert len(symbols) == 83 - 22 + 1
     assert next(e["z"] for e in options["elements"] if e["symbol"] == "Fe") == 26
     assert [e["value"] for e in options["edges"]] == ["K", "L1", "L2", "L3"]
     assert len(options["detections"]) == 3
+    # BL 2-2: 4.7 to 33 keV, by edge energy.
+    assert (options["energy_min"], options["energy_max"]) == (4700, 33000)
+    assert edges_of(options, "Fe") == ["K"]  # L edges below 1 keV
+    assert edges_of(options, "Te") == ["K", "L1"]  # K 31.8 keV, L1 4.94 keV, L2/L3 below 4.7
+    assert edges_of(options, "I") == ["L1", "L2"]  # K 33.2 keV above, L3 4.56 keV below
+    assert edges_of(options, "Pb") == ["L1", "L2", "L3"]
+    cu = next(e for e in options["elements"] if e["symbol"] == "Cu")
+    assert cu["edges"] == [{"edge": "K", "energy": 8979}]
+
+
+async def test_edges_outside_the_beamline_range_are_refused(client: AsyncClient) -> None:
+    code, _ = await configured_frame(client)
+    response = await add(client, code, element="Pb", edge="K")
+    assert response.status_code == 422
+    assert "outside the beamline's energy range 4.7–33 keV" in response.json()["detail"]
+    assert (await add(client, code, element="Pb", edge="L3")).status_code == 201
+
+
+async def test_measurements_from_before_a_range_change_stay_editable(
+    client: AsyncClient,
+) -> None:
+    code, _ = await configured_frame(client)
+    created = (await add(client, code, element="Ti", edge="K")).json()  # 4966 eV
+    await login_as(client, orcid(70), role="admin")
+    await client.put(f"{API}/admin/beamline", json={"energy_min": 5000, "energy_max": 33000})
+    await login_as(client, orcid(1))
+
+    url = f"{API}/measurements/{created['id']}"
+    body = {**XANES_FE, "element": "Ti", "detection": "transmission_tfy"}
+    keep_edge = await client.put(url, json={**body, "version": await version(client, code)})
+    assert keep_edge.status_code == 200  # the edge is kept, other settings may change
+    assert (await add(client, code, element="Ti", edge="K")).status_code == 422
+    options = (await client.get(f"{API}/measurement-options")).json()
+    assert edges_of(options, "Ti") is None
 
 
 # --- measurements ----------------------------------------------------------------------------

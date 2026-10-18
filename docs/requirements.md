@@ -157,7 +157,9 @@ Each plate type is stored as data: name, position labels, allowed sides, whether
 | Detection | Transmission; Transmission + TFY; Transmission + SDD |
 | Beam | Unfocused (default); Focused |
 
-Number of sweeps is decided by the control software, not the user. Restricting element/edge to the beamline's energy range is deferred.
+Number of sweeps is decided by the control software, not the user.
+
+**Beamline energy range:** users can only choose an element edge whose energy E0 (X-Ray Data Booklet table) lies within the beamline's energy range, for XANES and EXAFS alike. Default for BL 2-2: **4.7–33 keV**; Admins change it on **Admin → Beamline** (applies immediately; only values differing from the default are stored). Elements without any edge in range are not offered; the measurement dialog disables out-of-range edges and shows E0. New measurements and changes of element or edge are checked by the backend; existing measurements keep their edge when other settings are edited.
 
 ---
 
@@ -582,11 +584,11 @@ SLAC's reverse proxy (HAProxy, load balanced) terminates TLS and forwards
 |---|---|---|
 | 1 | ORCID: production Public API client registered under the project lead's personal ORCID account for now (handover plan needed if ownership changes; SLAC institutional membership may be considered later). A sandbox client (sandbox.orcid.org) is used for local development with an `http://localhost` callback, believed to be accepted by the sandbox; confirm at registration. | Production client registered (2026-10-15, redirect URI `https://www-ssrl.slac.stanford.edu/mail-in-xas/api/auth/orcid/callback`); credentials kept by the project lead for the production `.env` |
 | 2 | MongoDB backups: who, how often, where. | TBD |
-| 3 | SDD dead-time: are ROI rates already dead-time corrected? If not, correction formula using OCR/LiveTime. | Open |
+| 3 | SDD dead-time: ROI rates are **not** dead-time corrected (confirmed 2026-10-17); a correction using OCR/LiveTime is needed. | Later |
 | 4 | Email notifications: specified in §6.8 and §4.3. Slack notifications for staff. | Email decided; Slack later |
 | 5 | Processed XDI files: `…_proc_mu.xdi`, `…_proc_chi.xdi` and `…_proc_chir.xdi` (§11.5). | Decided |
 | 10 | Energy alignment (e.g. to the reference ln(i1/i2)) and user-adjustable processing parameters. | Later |
-| 6 | Element/edge restriction to beamline energy range. | Later |
+| 6 | Element/edge restriction to beamline energy range. | Done (§5.3, Admin → Beamline) |
 | 7 | Plate-type catalog editing UI. | Later |
 | 8 | Internal TLS. | Later |
 | 9 | Process manager on the VM: **systemd** (one service per backend: prod and dev). | Decided |

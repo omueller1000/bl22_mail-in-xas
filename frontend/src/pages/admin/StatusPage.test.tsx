@@ -40,7 +40,10 @@ describe("StatusPage", () => {
     expect(await screen.findByText(/400\.0 GB of 1\.00 TB used/)).toBeInTheDocument();
     expect(screen.getByText("600.0 GB free")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: /40% used/ })).toBeInTheDocument();
-    expect(screen.getByText(/takes 2\.00 MB of it/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "This database: 2.00 MB" })).toBeInTheDocument();
+    expect(screen.getByText("This database (ht_xas_dev): 2.00 MB")).toBeInTheDocument();
+    expect(screen.getByText("Other data on the disk: 400.0 GB")).toBeInTheDocument();
+    expect(screen.getByText("Free: 600.0 GB")).toBeInTheDocument();
     expect(screen.getByText(/120 sweeps uploaded, about 30\.0 GB/)).toBeInTheDocument();
     expect(screen.getByText(/full in about 600 days/)).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "sweeps" })).toBeInTheDocument();

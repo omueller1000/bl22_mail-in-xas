@@ -5,6 +5,7 @@ import { RequireRole, RequireUser } from "./auth/guards";
 import { Layout } from "./layout/Layout";
 import { AccountPage } from "./pages/AccountPage";
 import { DataPage } from "./pages/DataPage";
+import { BeamlinePage } from "./pages/admin/BeamlinePage";
 import { EmailPage } from "./pages/admin/EmailPage";
 import { ServiceClientsPage } from "./pages/admin/ServiceClientsPage";
 import { StatusPage } from "./pages/admin/StatusPage";
@@ -65,6 +66,7 @@ const router = createBrowserRouter(
               children: [
                 { path: "admin/service-clients", element: <ServiceClientsPage /> },
                 { path: "admin/xas-parameters", element: <XasParametersPage /> },
+                { path: "admin/beamline", element: <BeamlinePage /> },
                 { path: "admin/email", element: <EmailPage /> },
                 { path: "admin/status", element: <StatusPage /> },
               ],
