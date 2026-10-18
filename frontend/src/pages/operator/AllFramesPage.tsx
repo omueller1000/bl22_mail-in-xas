@@ -25,13 +25,16 @@ export function AllFramesPage() {
       label: "Barcode",
       sort: "barcode",
       render: (frame) => (
-        <Group gap={6} wrap="nowrap">
-          <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
-            {frame.barcode}
-          </Anchor>
-          {frame.has_data && <DataLink barcode={frame.barcode} />}
-        </Group>
+        <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
+          {frame.barcode}
+        </Anchor>
       ),
+    },
+    {
+      key: "data",
+      label: "Data",
+      th: { w: 60 },
+      render: (frame) => frame.has_data && <DataLink barcode={frame.barcode} />,
     },
     { key: "user", label: "User", render: (frame) => frame.owner?.name },
     { key: "status", label: "Status", render: (frame) => <FrameStateBadge state={frame.state} /> },

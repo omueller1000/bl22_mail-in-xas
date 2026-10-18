@@ -42,5 +42,9 @@ describe("FramesPage", () => {
     );
     expect(screen.getByRole("link", { name: "BBBB-BBBB" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Data of BBBB-BBBB" })).not.toBeInTheDocument();
+    // In its own column, not next to the barcode.
+    expect(screen.getByRole("columnheader", { name: "Data" })).toBeInTheDocument();
+    const dataCell = screen.getByRole("link", { name: "Data of AAAA-AAAA" }).closest("td");
+    expect(dataCell).not.toBe(screen.getByRole("link", { name: "AAAA-AAAA" }).closest("td"));
   });
 });

@@ -39,15 +39,21 @@ import { PageLoader } from "../auth/guards";
 import { DataLink } from "../data/DataLink";
 import { formatDate } from "../materials/labels";
 
+// Height of one frame line in the Frames and Data columns, so their lines stay level.
+const FRAME_LINE_HEIGHT = 24;
+
 /** The user's sample library (requirements §8.2). */
 export function SamplesPage() {
   const [showArchived, setShowArchived] = useState(false);
+  const [onlyWithData, setOnlyWithData] = useState(false);
   const [editing, setEditing] = useState<Sample | "new" | null>(null);
   const [query, setQuery] = useState("");
   const { data: samples, isPending, error } = useSamples(showArchived);
   const needle = query.trim().toLowerCase();
   const shown = (samples ?? []).filter(
-    (s) => !needle || [s.name, s.description, ...s.frames].join(" ").toLowerCase().includes(needle),
+    (s) =>
+      (!onlyWithData || s.data_frames.length > 0) &&
+      (!needle || [s.name, s.description, ...s.frames].join(" ").toLowerCase().includes(needle)),
   );
 
   return (
@@ -74,6 +80,11 @@ export function SamplesPage() {
           checked={showArchived}
           onChange={(event) => setShowArchived(event.currentTarget.checked)}
         />
+        <Switch
+          label="Only samples with data"
+          checked={onlyWithData}
+          onChange={(event) => setOnlyWithData(event.currentTarget.checked)}
+        />
       </Group>
       {isPending ? (
         <PageLoader />
@@ -82,7 +93,9 @@ export function SamplesPage() {
       ) : samples.length === 0 ? (
         <Text c="dimmed">No samples yet.</Text>
       ) : shown.length === 0 ? (
-        <Text c="dimmed">No sample matches “{query.trim()}”.</Text>
+        <Text c="dimmed">
+          {needle ? `No sample matches “${query.trim()}”.` : "No sample with data yet."}
+        </Text>
       ) : (
         <Table.ScrollContainer minWidth={760}>
           <Table striped highlightOnHover>
@@ -92,6 +105,7 @@ export function SamplesPage() {
                 <Table.Th>Description</Table.Th>
                 <Table.Th>MSDS</Table.Th>
                 <Table.Th>Frames</Table.Th>
+                <Table.Th w={60}>Data</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th w={40} />
               </Table.Tr>
@@ -166,10 +180,19 @@ function SampleRow({ sample, onEdit }: { sample: Sample; onEdit: () => void }) {
       <Table.Td>
         <Stack gap={2}>
           {sample.frames.map((barcode) => (
-            <Group key={barcode} gap={4} wrap="nowrap">
+            <Group key={barcode} h={FRAME_LINE_HEIGHT}>
               <Anchor component={Link} to={`/frames/${barcode}`} size="sm" ff="monospace">
                 {barcode}
               </Anchor>
+            </Group>
+          ))}
+        </Stack>
+      </Table.Td>
+      <Table.Td>
+        {/* One line per frame, level with its barcode in the Frames column. */}
+        <Stack gap={2}>
+          {sample.frames.map((barcode) => (
+            <Group key={barcode} h={FRAME_LINE_HEIGHT}>
               {sample.data_frames.includes(barcode) && (
                 <DataLink barcode={barcode} sampleId={sample.id} />
               )}

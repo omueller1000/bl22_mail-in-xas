@@ -73,6 +73,29 @@ describe("SamplesPage", () => {
       "href",
       "/frames/BBBB-BBBB/data?sample=s2",
     );
+    // In its own column, not next to the barcode.
+    expect(screen.getByRole("columnheader", { name: "Data" })).toBeInTheDocument();
+    const dataCell = screen.getByRole("link", { name: "Data of BBBB-BBBB" }).closest("td");
+    expect(dataCell).not.toBe(screen.getByRole("link", { name: "BBBB-BBBB" }).closest("td"));
+  });
+
+  it("shows only samples with data when asked", async () => {
+    mockApi({
+      "GET /samples": () =>
+        json([
+          sample({ id: "s1", name: "Fe2O3", frames: ["AAAA-AAAA"] }),
+          sample({ id: "s2", name: "CuO", frames: ["BBBB-BBBB"], data_frames: ["BBBB-BBBB"] }),
+        ]),
+    });
+    renderWithProviders(<SamplesPage />);
+    await screen.findByText("Fe2O3");
+
+    await userEvent.click(screen.getByRole("switch", { name: "Only samples with data" }));
+    expect(screen.getByText("CuO")).toBeInTheDocument();
+    expect(screen.queryByText("Fe2O3")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Only samples with data" }));
+    expect(screen.getByText("Fe2O3")).toBeInTheDocument();
   });
 
   it("filters the table by the search text", async () => {

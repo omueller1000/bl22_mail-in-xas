@@ -1,4 +1,4 @@
-import { Alert, Anchor, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Stack, Table, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 
 import { useFrames, usePlateTypes } from "../api/materials";
@@ -33,6 +33,7 @@ export function FramesPage() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Barcode</Table.Th>
+                <Table.Th w={60}>Data</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Plates</Table.Th>
                 <Table.Th>Samples</Table.Th>
@@ -43,13 +44,11 @@ export function FramesPage() {
               {frames.map((frame) => (
                 <Table.Tr key={frame.barcode}>
                   <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
-                        {frame.barcode}
-                      </Anchor>
-                      {frame.has_data && <DataLink barcode={frame.barcode} />}
-                    </Group>
+                    <Anchor component={Link} to={`/frames/${frame.barcode}`} ff="monospace">
+                      {frame.barcode}
+                    </Anchor>
                   </Table.Td>
+                  <Table.Td>{frame.has_data && <DataLink barcode={frame.barcode} />}</Table.Td>
                   <Table.Td>
                     <FrameStateBadge state={frame.state} />
                   </Table.Td>
