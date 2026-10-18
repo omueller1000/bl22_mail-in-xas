@@ -176,7 +176,9 @@ function UserMenu() {
         )}
         <Menu.Item
           color="red"
-          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate("/") })}
+          onClick={() =>
+            logout.mutate(undefined, { onSuccess: () => navigate("/login", { replace: true }) })
+          }
         >
           Sign out
         </Menu.Item>
