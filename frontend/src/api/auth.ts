@@ -46,9 +46,11 @@ export function useLogout() {
       const { response } = await api.POST("/auth/logout");
       if (!response.ok) throw new Error(`Logout failed (HTTP ${response.status})`);
     },
-    onSuccess: () => {
-      queryClient.clear();
-      void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    onSuccess: async () => {
+      // Drop the signed-in user's data. "me" is reset rather than removed, so components showing
+      // it (navbar, user menu) are told and refetch: the user is now anonymous.
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== ME_KEY[0] });
+      await queryClient.resetQueries({ queryKey: ME_KEY });
     },
   });
 }

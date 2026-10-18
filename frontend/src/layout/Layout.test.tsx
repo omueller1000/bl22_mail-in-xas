@@ -28,8 +28,13 @@ describe("Layout", () => {
       { route: "/frames" },
     );
 
-    await userEvent.click(await screen.findByRole("button", { name: /Ada Test/ }));
+    expect(await screen.findByRole("link", { name: "My Frames" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Ada Test/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     expect(await screen.findByTestId("location")).toHaveTextContent("/login");
+    // The navbar no longer shows the signed-in user's pages.
+    expect(await screen.findByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "My Frames" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ada Test/ })).not.toBeInTheDocument();
   });
 });
