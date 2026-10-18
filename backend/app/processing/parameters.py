@@ -25,7 +25,8 @@ class Parameters:
     # ... up to this far before the end of the spectrum.
     post_end_before_last: float = 10.0
     post_order: int = 3
-    # For display only: how far past E0 the fitted pre-/post-edge curves are drawn.
+    # For display only: how far below E0 the fitted post-edge curve is drawn (a cubic would
+    # run off far below the edge). The pre-edge curve is drawn over the whole range.
     curve_overlap: float = 50.0
 
     # --- Background: AUTOBK-like cubic spline in k ------------------------------------------
@@ -52,7 +53,7 @@ class Parameters:
     ft_dk: float = 1.0
     nfft: int = 2048
     # |chi(R)| is returned up to this distance.
-    rmax: float = 6.0
+    rmax: float = 8.0
 
     def as_dict(self) -> dict[str, Any]:
         return {**asdict(self), "algorithm_version": ALGORITHM_VERSION}

@@ -103,7 +103,7 @@ class Curves:
 
     energy: Array
     mu: Array
-    pre_edge: Array | None  # drawn from the start up to E0 + curve_overlap
+    pre_edge: Array | None  # drawn over the whole energy range (as in Athena)
     post_edge: Array | None  # drawn from E0 - curve_overlap to the end
     background: Array | None  # at and above E0
     k: Array | None
@@ -117,7 +117,8 @@ def curves(result: Result, params: Parameters = DEFAULTS) -> Curves:
     energy, e0 = result.energy, result.e0
     pre = post = background = None
     if (n := result.normalization) is not None:
-        pre = np.where(energy <= e0 + params.curve_overlap, n.pre_edge, np.nan)
+        # The whole range: shows the pre-edge line under the post-edge region (edge step).
+        pre = n.pre_edge
         post = np.where(energy >= e0 - params.curve_overlap, n.post_edge, np.nan)
     k = chi = window = r = chir = None
     if (x := result.exafs) is not None:

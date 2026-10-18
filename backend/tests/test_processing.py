@@ -54,12 +54,12 @@ def test_full_processing_recovers_step_and_shell() -> None:
     assert curves.ft_window.max() == 1 and curves.ft_window[curves.k < 1].max() == 0
 
 
-def test_fitted_curves_are_drawn_only_near_their_ranges() -> None:
+def test_where_fitted_curves_are_drawn() -> None:
     energy, mu = synthetic_mu()
     curves = pipeline.curves(pipeline.process(energy, mu, "Cu", "K"))
     assert curves.pre_edge is not None and curves.post_edge is not None
     assert curves.background is not None
-    assert np.isnan(curves.pre_edge[energy > CU_K + 60]).all()
+    assert not np.isnan(curves.pre_edge).any()  # the whole energy range
     assert np.isnan(curves.post_edge[energy < CU_K - 60]).all()
     assert np.isnan(curves.background[energy < CU_K]).all()
     assert np.isfinite(curves.background[energy > CU_K]).all()

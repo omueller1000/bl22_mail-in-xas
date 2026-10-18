@@ -120,7 +120,7 @@ async def test_process_a_single_sweep_and_a_merge(
     assert p["edge_step"] == pytest.approx(2.0, rel=0.05)
     assert p["problems"] == []
     assert len(p["mu"]["x"]) == len(p["pre_edge"]["y"]) == len(p["background"]["y"])
-    assert p["pre_edge"]["y"][-1] is None  # drawn only up to E0 + 50 eV
+    assert p["pre_edge"]["y"][-1] is not None  # drawn over the whole energy range
     assert p["chi"]["x"][0] == 0
     assert p["ft_window"]["x"] == p["chi"]["x"] and max(p["ft_window"]["y"]) == 1
     magnitude = p["chir"]["magnitude"]

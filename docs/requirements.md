@@ -494,7 +494,7 @@ All analog channels are always recorded, even when they carry no meaningful sign
   2. **Normalisation:** pre-edge quadratic polynomial from 10 eV after the start of the spectrum to 40 eV below E0; post-edge cubic polynomial from 150 eV above E0 to 10 eV before the end; edge step = post-edge minus pre-edge at E0.
   3. **Background removal** (AUTOBK-like): a cubic spline in k whose coefficients minimise the Fourier components of χ below R_bkg = 1 Å.
   4. **χ(k)**, shown k²-weighted.
-  5. **Fourier transform** χ(R) (magnitude, real and imaginary part) with a Hanning window: k from 2 Å⁻¹ to 1 Å⁻¹ before the end of the data, taper dk = 1 Å⁻¹, R up to 6 Å.
+  5. **Fourier transform** χ(R) (magnitude, real and imaginary part) with a Hanning window: k from 2 Å⁻¹ to 1 Å⁻¹ before the end of the data, taper dk = 1 Å⁻¹, R up to 8 Å.
 - **Parameters:** the defaults are collected in one class in the code (`backend/app/processing/parameters.py`). Admins can change the scientific ones (ranges, polynomial orders, R_bkg, k-weights, FT window) on **Admin → XAS parameters**, with allowed ranges, Apply and Restore defaults; only values that differ from the defaults are stored, and changes apply to all users immediately (no restart). Technical settings (k grid, FFT size, plotted ranges) are changed in the code only. No history of changes is kept. The parameters used are shown with every result and written into the headers of exported files.
 - If a step is not possible (e.g. a XANES scan has no post-edge or EXAFS region), the steps before it are still shown, with the reason.
 - Dead-time: SDD data is assumed to be dead-time corrected already (open item 3).
@@ -517,7 +517,7 @@ All analog channels are always recorded, even when they carry no meaningful sign
 2. Choose view:
    - **Raw signals:** any individual channel (e.g. `i0`, `i1`, `fy`, `roi1_3`) vs energy,
    - **Spectra:** derived spectra (§11.3),
-   - **μ(E)** (raw, not normalised) with the pre-edge, post-edge and background curves, each can be shown or hidden,
+   - **μ(E)** (raw, not normalised) with the pre-edge, post-edge and background curves, each can be shown or hidden; the pre-edge line is drawn over the whole energy range (as in Athena), the post-edge line from 50 eV below E0,
    - **χ(k)** (k²-weighted),
    - **χ(R)**: magnitude, optionally real and imaginary part.
 3. Spectra and raw signals: all sweeps of the selected measurement/batch are overlaid; sweeps can be toggled; the merge of all sweeps and the merge of the checked sweeps can be shown.
