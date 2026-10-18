@@ -25,12 +25,10 @@ async def test_defaults_change_and_restore(client: AsyncClient, raw_db: Any) -> 
     defaults = (await client.get(URL)).json()
     assert defaults["energy_min"] == defaults["default_min"] == 4700
     assert defaults["energy_max"] == defaults["default_max"] == 33000
-    assert 0 < defaults["edges_available"] < defaults["edges_total"]
 
     changed = await client.put(URL, json={"energy_min": 4700, "energy_max": 20000})
     assert changed.status_code == 200
     assert changed.json()["energy_max"] == 20000
-    assert changed.json()["edges_available"] < defaults["edges_available"]
     # Only values that differ from the defaults are stored.
     assert await raw_db["settings"].find_one({"_id": "beamline"}) == {
         "_id": "beamline",
@@ -50,8 +48,8 @@ async def test_defaults_change_and_restore(client: AsyncClient, raw_db: Any) -> 
     [
         {"energy_min": 30000, "energy_max": 5000},
         {"energy_min": 5000, "energy_max": 5000},
-        {"energy_min": 0, "energy_max": 5000},
-        {"energy_min": 5000, "energy_max": 500000},
+        {"energy_min": 999, "energy_max": 5000},  # allowed: 1 to 100 keV
+        {"energy_min": 5000, "energy_max": 100001},
     ],
 )
 async def test_invalid_ranges_are_refused(client: AsyncClient, body: dict[str, float]) -> None:

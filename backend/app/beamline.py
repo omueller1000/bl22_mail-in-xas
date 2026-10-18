@@ -20,8 +20,8 @@ DOC_ID = "beamline"
 DEFAULT_ENERGY_MIN = 4700.0  # eV
 DEFAULT_ENERGY_MAX = 33000.0  # eV
 # What the form accepts at all.
-LIMIT_LOW = 100.0
-LIMIT_HIGH = 200000.0
+LIMIT_LOW = 1000.0  # eV
+LIMIT_HIGH = 100000.0  # eV
 
 
 class EnergyRange(BaseModel):
@@ -70,9 +70,6 @@ class BeamlineSettings(BaseModel):
     energy_max: float
     default_min: float
     default_max: float
-    # How many element/edge combinations the range allows (out of all in the table).
-    edges_available: int
-    edges_total: int
 
 
 class BeamlineUpdate(BaseModel):
@@ -93,8 +90,8 @@ async def set_beamline(body: BeamlineUpdate, _: Admin, db: Db) -> BeamlineSettin
     if not LIMIT_LOW <= body.energy_min < body.energy_max <= LIMIT_HIGH:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
-            f"The minimum must be below the maximum, both between {LIMIT_LOW:g} and "
-            f"{LIMIT_HIGH:g} eV",
+            f"The minimum must be below the maximum, both between {LIMIT_LOW / 1000:g} and "
+            f"{LIMIT_HIGH / 1000:g} keV",
         )
     changed: dict[str, Any] = {
         key: value
@@ -116,12 +113,9 @@ async def restore_beamline(_: Admin, db: Db) -> BeamlineSettings:
 
 
 def _settings(allowed: EnergyRange) -> BeamlineSettings:
-    energies = [e for edges in EDGE_ENERGIES.values() for e in edges.values()]
     return BeamlineSettings(
         energy_min=allowed.energy_min,
         energy_max=allowed.energy_max,
         default_min=DEFAULT_ENERGY_MIN,
         default_max=DEFAULT_ENERGY_MAX,
-        edges_available=sum(allowed.contains(e) for e in energies),
-        edges_total=len(energies),
     )

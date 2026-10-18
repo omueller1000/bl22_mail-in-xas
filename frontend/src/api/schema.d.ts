@@ -1357,10 +1357,6 @@ export interface components {
             default_min: number;
             /** Default Max */
             default_max: number;
-            /** Edges Available */
-            edges_available: number;
-            /** Edges Total */
-            edges_total: number;
         };
         /** BeamlineUpdate */
         BeamlineUpdate: {

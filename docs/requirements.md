@@ -159,7 +159,7 @@ Each plate type is stored as data: name, position labels, allowed sides, whether
 
 Number of sweeps is decided by the control software, not the user.
 
-**Beamline energy range:** users can only choose an element edge whose energy E0 (X-Ray Data Booklet table) lies within the beamline's energy range, for XANES and EXAFS alike. Default for BL 2-2: **4.7–33 keV**; Admins change it on **Admin → Beamline** (applies immediately; only values differing from the default are stored). Elements without any edge in range are not offered; the measurement dialog disables out-of-range edges and shows E0. New measurements and changes of element or edge are checked by the backend; existing measurements keep their edge when other settings are edited.
+**Beamline energy range:** users can only choose an element edge whose energy E0 (X-Ray Data Booklet table) lies within the beamline's energy range, for XANES and EXAFS alike. Default for BL 2-2: **4.7–33 keV**; Admins change it on **Admin → Beamline** (each limit 1–100 keV; applies immediately; only values differing from the default are stored). Elements without any edge in range are not offered; the measurement dialog disables out-of-range edges and shows E0. New measurements and changes of element or edge are checked by the backend; existing measurements keep their edge when other settings are edited.
 
 ---
 

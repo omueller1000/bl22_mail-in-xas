@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -11,8 +11,6 @@ const DEFAULTS = {
   energy_max: 33000,
   default_min: 4700,
   default_max: 33000,
-  edges_available: 140,
-  edges_total: 248,
 };
 
 describe("BeamlinePage", () => {
@@ -21,23 +19,26 @@ describe("BeamlinePage", () => {
     const fetchMock = mockApi({
       "GET /admin/beamline": () => json(current),
       "PUT /admin/beamline": async (request) => {
-        current = { ...current, ...(await request.clone().json()), edges_available: 120 };
+        current = { ...current, ...(await request.clone().json()) };
         return json(current);
       },
     });
     renderWithProviders(<BeamlinePage />);
 
-    const max = await screen.findByRole("textbox", { name: "Maximum" });
-    expect(max).toHaveValue("33 keV");
-    expect(screen.getByText(/140 of 248 edges/)).toBeInTheDocument();
+    const max = await screen.findByRole("textbox", { name: "Maximum energy" });
+    expect(max).toHaveValue("33");
+    const row = max.closest("tr")!;
+    expect(within(row).getByText("keV")).toBeInTheDocument();
+    expect(within(row).getByText("1–100")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore defaults" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+    expect(screen.queryByText("changed")).not.toBeInTheDocument();
 
     await userEvent.clear(max);
     await userEvent.type(max, "25.5");
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    await waitFor(() => expect(screen.getByText(/120 of 248 edges/)).toBeInTheDocument());
+    expect(await screen.findByText("changed")).toBeInTheDocument();
     const put = fetchMock.mock.calls.map(([r]) => r).find((r) => r.method === "PUT")!;
     expect(await put.json()).toEqual({ energy_min: 4700, energy_max: 25500 });
   });
@@ -45,7 +46,7 @@ describe("BeamlinePage", () => {
   it("refuses a maximum below the minimum", async () => {
     mockApi({ "GET /admin/beamline": () => json(DEFAULTS) });
     renderWithProviders(<BeamlinePage />);
-    const max = await screen.findByRole("textbox", { name: "Maximum" });
+    const max = await screen.findByRole("textbox", { name: "Maximum energy" });
     await userEvent.clear(max);
     await userEvent.type(max, "3");
     expect(screen.getByText("Must be above the minimum")).toBeInTheDocument();
