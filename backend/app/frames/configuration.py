@@ -66,6 +66,7 @@ def why_not_configurable(frame: dict[str, Any]) -> str | None:
 MEASUREMENTS_FROZEN_STATES = {
     FrameState.SCHEDULED,
     FrameState.LOADED,
+    FrameState.RETURNING_TO_USER,
     FrameState.RETURNED,
     FrameState.VOID,
 }

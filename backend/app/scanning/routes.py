@@ -20,6 +20,7 @@ from app.frames.versioning import in_transaction
 from app.frames.views import frame_model
 from app.mail import notify
 from app.measurements import repository as measurements
+from app.measurements.models import MeasurementProgress
 from app.scanning.rules import ScanAction, leaves_slot, outcome
 from app.users import repository as users
 
@@ -188,8 +189,7 @@ async def _notify(db: Db, target: FrameState | None, frame: dict[str, Any]) -> N
         await notify.received(db, frame)
     elif target is FrameState.RECEIVED_ON_HOLD:
         await notify.on_hold(db, frame)
-    elif target is FrameState.RETURNED:
-        await notify.returned(db, frame)
+    # Returning frames are reported in the shipment email when they leave (Shipping page).
 
 
 async def _owners(db: Db, docs: Any) -> dict[Any, dict[str, Any]]:
@@ -276,12 +276,6 @@ async def release(barcode: str, operator: Operator, db: Db) -> Frame:
     return await frame_model(db, updated)
 
 
-class MeasurementProgress(BaseModel):
-    pending: int
-    done: int
-    error: int
-
-
 class FailedMeasurement(BaseModel):
     position: str
     number: int
@@ -327,18 +321,12 @@ async def internal_storage(_: Operator, db: Db) -> list[StoredFrame]:
             locked=bool(d.get("locked")),
             since=d["storage"].get("since"),
             edges=edges.get(d["_id"], []),
-            measurements=_progress(progress.get(d["_id"], ({}, []))[0]),
+            measurements=MeasurementProgress.of(progress.get(d["_id"], ({}, []))[0]),
             failed=[_failed(m) for m in progress.get(d["_id"], ({}, []))[1]],
         )
         for d in docs
     ]
     return sorted(rows, key=lambda r: (r.container, r.slot))
-
-
-def _progress(counts: dict[str, int]) -> MeasurementProgress:
-    return MeasurementProgress(
-        pending=counts.get("pending", 0), done=counts.get("done", 0), error=counts.get("error", 0)
-    )
 
 
 def _failed(doc: dict[str, Any]) -> FailedMeasurement:

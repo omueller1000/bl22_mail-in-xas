@@ -15,6 +15,22 @@ class MeasurementStatus(StrEnum):
     ERROR = "error"
 
 
+class MeasurementProgress(BaseModel):
+    """How many of a frame's measurements are in each status."""
+
+    pending: int
+    done: int
+    error: int
+
+    @classmethod
+    def of(cls, counts: dict[str, int]) -> "MeasurementProgress":
+        return cls(
+            pending=counts.get("pending", 0),
+            done=counts.get("done", 0),
+            error=counts.get("error", 0),
+        )
+
+
 def _check_element(symbol: str) -> str:
     if symbol not in ELEMENTS:
         raise ValueError("element must be one of Ti to Bi")

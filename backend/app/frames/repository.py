@@ -110,9 +110,13 @@ async def transition(
     return result.modified_count
 
 
-async def issued_by_owner(db: Database) -> dict[ObjectId, list[dict[str, Any]]]:
-    """Frames issued but not yet shipped, grouped by owner."""
+# What leaves with the next shipment to a user: new frames and frames going back.
+TO_SHIP = (FrameState.ISSUED, FrameState.RETURNING_TO_USER)
+
+
+async def to_ship_by_owner(db: Database) -> dict[ObjectId, list[dict[str, Any]]]:
+    """Frames waiting to be shipped (issued or returning), grouped by owner."""
     groups: dict[ObjectId, list[dict[str, Any]]] = {}
-    for doc in await find(db, {"state": FrameState.ISSUED.value}):
+    for doc in await find(db, {"state": {"$in": [s.value for s in TO_SHIP]}}):
         groups.setdefault(doc["owner_id"], []).append(doc)
     return groups

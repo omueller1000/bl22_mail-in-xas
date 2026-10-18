@@ -4,6 +4,8 @@ import html
 from dataclasses import dataclass
 from typing import Any
 
+from app.catalog import PLATE_TYPES
+
 BEAMLINE_URL = "https://www-ssrl.slac.stanford.edu/ssrl/web/beam-lines/2-2"
 FOOTER = (
     "This is an automatic message from the BL22 mail-in XAS portal; replies are not read. "
@@ -58,6 +60,46 @@ def _frames(data: dict[str, Any]) -> list[str]:
     return list(data.get("frames", []))
 
 
+def _shipped(data: dict[str, Any], hello: str, portal_url: str) -> Rendered:
+    """One shipment: new frames and plates, and/or frames returned with the user's samples."""
+    new = _frames(data)
+    returned = list(data.get("returned", []))
+    plates = data.get("plates", [])
+    items = [f"Frame {code} (new)" for code in new]
+    items += [f"{p['quantity']} × {_plate_name(p['plate_type'])} plate" for p in plates]
+    items += [f"Frame {code} with your samples (returned)" for code in returned]
+    paragraphs = []
+    if new or plates:
+        paragraphs.append(
+            "We have shipped new material to you. Once it arrives, mount the plates, place "
+            "your samples, define the measurements and declare the frames safe in the portal "
+            "before sending them back."
+        )
+    if returned:
+        paragraphs.append(
+            "Your frames with your samples are on their way back to you. The data of all "
+            "measurements stays available in the portal."
+        )
+    if new and returned:
+        subject = f"{len(new)} new and {len(returned)} returned frame(s) shipped to you"
+    elif returned:
+        subject = f"{len(returned)} frame(s) returned to you"
+    else:
+        subject = f"{len(new)} frame(s) shipped to you"
+    return _render(
+        f"BL22 mail-in XAS: {subject}",
+        hello,
+        paragraphs,
+        ("Your frames", f"{portal_url}frames"),
+        items,
+    )
+
+
+def _plate_name(type_id: str) -> str:
+    plate = PLATE_TYPES.get(type_id)
+    return plate.name if plate else type_id
+
+
 def render(kind: str, data: dict[str, Any], portal_url: str) -> Rendered:
     """portal_url ends with a slash, e.g. https://host/mail-in-xas/."""
     name = data.get("name")
@@ -87,18 +129,7 @@ def render(kind: str, data: dict[str, Any], portal_url: str) -> Rendered:
                 items,
             )
         case "shipped":
-            frames = _frames(data)
-            return _render(
-                f"BL22 mail-in XAS: {len(frames)} frame(s) shipped to you",
-                hello,
-                [
-                    "We have shipped the following frames to you. Once they arrive, mount "
-                    "the plates, place your samples, define the measurements and declare "
-                    "the frames safe in the portal before sending them back.",
-                ],
-                ("Your frames", f"{portal_url}frames"),
-                frames,
-            )
+            return _shipped(data, hello, portal_url)
         case "arrived":
             frames = _frames(data)
             return _render(
@@ -149,7 +180,7 @@ def render(kind: str, data: dict[str, Any], portal_url: str) -> Rendered:
                 ],
                 ("View the data", f"{portal_url}frames/{data['barcode']}/data"),
             )
-        case "returned":
+        case "returned":  # no longer sent (now part of "shipped"); kept for queued emails
             return _render(
                 f"BL22 mail-in XAS: frame {data['barcode']} returned",
                 hello,

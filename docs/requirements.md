@@ -186,7 +186,8 @@ A **frame** is the physical holder; it carries a unique **barcode** and up to tw
 | `internal_storage` | In robot reach; has a container (0–2) and slot (0–10). |
 | `scheduled` | Selected by the control software's scheduler. |
 | `loaded` | Loaded for measurement by the control software. |
-| `returned` | Shipped back to the user. Terminal. |
+| `returning_to_user` | Marked for return; waits on the Shipping page for the next shipment to the user. |
+| `returned` | Shipped back to the user (marked shipped on the Shipping page). Terminal. |
 | `void` | Lost/damaged/cancelled barcode. Terminal. |
 
 ### 6.3 Transitions
@@ -198,7 +199,7 @@ A **frame** is the physical holder; it carries a unique **barcode** and up to tw
 | `shipped_to_user` | `received` | Operator scan | Safety declared. If **not locked** → warning shown to operator and user. |
 | `shipped_to_user` | `received_on_hold` | Operator scan | Safety not declared. Warning shown to operator and user. |
 | `received_on_hold` | `received` | **Automatic** | When the user declares safety. |
-| `received_on_hold` | `returned` | Operator scan | Typically after a few days, unmeasured. |
+| `received_on_hold` | `returning_to_user` | Operator scan | Typically after a few days, unmeasured. |
 | `received` | `external_storage` | Operator scan | |
 | `received` | `internal_storage` | Operator scan (single frame) | Free container + slot required. |
 | `external_storage` | `internal_storage` | Operator scan (single frame) | Free container + slot required. |
@@ -208,12 +209,14 @@ A **frame** is the physical holder; it carries a unique **barcode** and up to tw
 | `scheduled` | `loaded` | Instrument | |
 | `loaded` | `internal_storage` | Instrument | Returns to the same slot. |
 | `scheduled`, `loaded` | `internal_storage` | Operator (**release**) | Override for when the control software has crashed: the operator puts the frame back manually, then releases it in the portal before restarting the control software. Returns to the same slot. |
-| `received`, `external_storage`, `internal_storage` | `returned` | Operator scan | Frees the slot if any. |
+| `received`, `external_storage`, `internal_storage` | `returning_to_user` | Operator scan ("mark as returning to user") | Frees the slot if any. No email yet. |
+| `returning_to_user` | `external_storage` | Operator scan ("move to external storage") | Undo, if marked by mistake. |
+| `returning_to_user` | `returned` | Operator (**Mark shipped**, Shipping page §9.3) | Together with everything else in the user's box. |
 | any non-terminal | `void` | Operator | Frees the slot if any. |
 
 All other transitions are rejected by the backend.
 
-- A frame keeps its container/slot while `scheduled` or `loaded`; the slot is freed only when the frame leaves to `external_storage`, `returned` or `void`.
+- A frame keeps its container/slot while `scheduled` or `loaded`; the slot is freed only when the frame leaves to `external_storage`, `returning_to_user` or `void`.
 - A container/slot can be occupied by only one frame (enforced by a unique constraint).
 
 ### 6.4 Lock and safety declaration
@@ -252,7 +255,7 @@ Resulting combinations: not safe & unlocked (being assembled), safe & unlocked (
 | declared safe, unlocked | **fixed** | editable (owner, Operator) |
 | locked | fixed | fixed (unlock first) |
 | `scheduled` / `loaded` | fixed | fixed (cannot unlock) |
-| `returned` / `void` | fixed | fixed |
+| `returning_to_user` / `returned` / `void` | fixed | fixed (cannot unlock) |
 
 ### 6.7 Warnings (notifications, v1)
 
@@ -269,11 +272,10 @@ Sent **immediately** (via an outbox in the database and a background sender, wit
 | Event | Trigger | User (owner) | Operators |
 |---|---|---|---|
 | Material request submitted | user submits a request | – | ✓ |
-| Material shipped | operator marks frames as shipped (Shipping page) | ✓ one email per shipment, listing frames and plates | – |
+| Shipment | operator marks a box shipped (Shipping page §9.3) | ✓ **one** email per shipment, listing new frames, plates and returned frames | – |
 | Frame and samples arrived | receive → `received` | ✓ | – |
 | Frame on hold | receive → `received_on_hold` | ✓ (what is missing) | ✓ |
 | Frame complete (data ready) | every measurement on the frame is `done` and has data | ✓ with a link to the data page | ✓ |
-| Frame returned | return → `returned` | ✓ | – |
 
 - **Operators** = all accounts with the Operator or Admin role.
 - No emails about measurement errors: the control software notifies staff about errors itself.
@@ -337,7 +339,7 @@ Similar to v1's *Create* page:
   - **not yet declared safe** (still being assembled), or
   - already `returned` / `void`.
 
-  Rationale: the portal has no "in transit to facility" state, and a frame cannot be shipped back without the safety declaration. Blocking deletion on any frame that is declared safe and not yet returned/void therefore covers frames in transit and at the facility (`received` through `loaded`, incl. `received_on_hold`), and never leaves an empty position on a declared frame.
+  Rationale: the portal has no "in transit to facility" state, and a frame cannot be shipped back without the safety declaration. Blocking deletion on any frame that is declared safe and not yet returned/void therefore covers frames in transit and at the facility (`received` through `loaded`, incl. `received_on_hold` and `returning_to_user`), and never leaves an empty position on a declared frame.
   - Deleting a sample from a frame that is still being assembled clears its positions and removes their (never executed) measurements.
   - A sample with data can never be deleted (archive it instead).
 
@@ -368,7 +370,7 @@ Barcode scanners are handheld devices that emulate a keyboard: a scan types the 
 
 ### 9.1 Scan frames page (one table, per-frame actions)
 
-Used for: **receive**, **to external storage**, **return to user**, **void**. (Issuing barcodes and shipping to users have their own pages, §7 and §9.3.)
+Used for: **receive**, **to external storage** (also undoes "returning to user"), **mark as returning to user**, **void**. (Issuing barcodes and shipping to users have their own pages, §7 and §9.3.)
 
 - Scanned codes collect in **one table**: barcode, user, current status, safety and lock flags.
 - Each row has **one button per action**. A button is enabled only if that move is possible for the frame; its tooltip names the action, adds a warning if any (e.g. not declared safe: put on hold; not locked), or explains why the move is not possible.
@@ -384,9 +386,14 @@ Batch scanning is **not** allowed here.
 2. Enter container (0–2) and slot (0–10).
 3. Save. The backend rejects occupied slots and invalid transitions.
 
-### 9.3 Issued-not-shipped view
+### 9.3 Shipping page ("Ready to ship")
 
-Lists all `issued` frames grouped by user (with the user's shipping address and phone). The operator can mark a whole group as `shipped_to_user`.
+One box per user with something to ship: the user's contact and shipping details (one value per row, each with a copy button), then what goes into the box:
+
+- **Material requests** (frames `issued`): per request its number, its plates (type × quantity; plates have no barcodes) and its empty frames' barcodes.
+- **Returning frames** (`returning_to_user`): barcode, plates, and whether it was measured (measured / N failed / x of y measured / not measured). No sample details.
+
+**Mark shipped** ships the whole box, all or nothing (confirmation first): issued frames become `shipped_to_user`, returning frames `returned`; material requests whose frames have all shipped become `fulfilled`. The user gets one shipment email (§6.8). No packing list for now.
 
 ### 9.4 Internal storage view
 

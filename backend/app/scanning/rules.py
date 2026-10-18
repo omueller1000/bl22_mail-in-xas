@@ -23,7 +23,8 @@ class ScanAction(StrEnum):
 # States from which each action may start (on top of the general transition table).
 _ALLOWED_FROM: dict[ScanAction, set[FrameState]] = {
     ScanAction.RECEIVE: {S.SHIPPED_TO_USER},
-    ScanAction.EXTERNAL_STORAGE: {S.RECEIVED, S.INTERNAL_STORAGE},
+    # From returning_to_user: undoes "mark as returning to user".
+    ScanAction.EXTERNAL_STORAGE: {S.RECEIVED, S.INTERNAL_STORAGE, S.RETURNING_TO_USER},
     ScanAction.RETURN: {S.RECEIVED, S.RECEIVED_ON_HOLD, S.EXTERNAL_STORAGE, S.INTERNAL_STORAGE},
     ScanAction.VOID: set(FrameState) - TERMINAL,
 }
@@ -55,7 +56,7 @@ def outcome(action: ScanAction, frame: dict[str, Any] | None) -> Outcome:
 
     target = {
         ScanAction.EXTERNAL_STORAGE: S.EXTERNAL_STORAGE,
-        ScanAction.RETURN: S.RETURNED,
+        ScanAction.RETURN: S.RETURNING_TO_USER,
         ScanAction.VOID: S.VOID,
     }[action]
     assert can_transition(current, target)

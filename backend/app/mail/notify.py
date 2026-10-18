@@ -9,7 +9,9 @@ from typing import Any
 from app.data import repository as data
 from app.db import Database
 from app.frames import repository as frames
+from app.frames.states import FrameState
 from app.mail import outbox
+from app.material_requests.repository import COLLECTION as MATERIAL_REQUESTS
 from app.measurements import repository as measurements
 from app.users import repository as users
 
@@ -48,20 +50,39 @@ async def material_request_submitted(
 
 
 async def shipped(db: Database, frames: list[dict[str, Any]]) -> None:
-    """One email per user, listing all of their frames in this shipment."""
-    by_owner: dict[Any, list[str]] = defaultdict(list)
+    """One email per user for the whole shipment: new frames with the plates of their material
+    requests, and frames returned to them."""
+    by_owner: dict[Any, list[dict[str, Any]]] = defaultdict(list)
     for frame in frames:
-        by_owner[frame.get("owner_id")].append(frame["_id"])
-    for owner_id, barcodes in by_owner.items():
+        by_owner[frame.get("owner_id")].append(frame)
+    for owner_id, docs in by_owner.items():
         owner = await users.get_by_id(db, owner_id) if owner_id else None
-        if _confirmed(owner):
-            assert owner is not None
-            await outbox.enqueue(
-                db,
-                "shipped",
-                [outbox.recipient(owner)],
-                {"name": owner["name"], "frames": sorted(barcodes)},
-            )
+        if not _confirmed(owner):
+            continue
+        assert owner is not None
+        new = [d for d in docs if d["state"] == FrameState.SHIPPED_TO_USER.value]
+        returned = [d for d in docs if d["state"] == FrameState.RETURNED.value]
+        await outbox.enqueue(
+            db,
+            "shipped",
+            [outbox.recipient(owner)],
+            {
+                "name": owner["name"],
+                "frames": sorted(d["_id"] for d in new),
+                "plates": await _plates_of_requests(db, {d.get("request_id") for d in new}),
+                "returned": sorted(d["_id"] for d in returned),
+            },
+        )
+
+
+async def _plates_of_requests(db: Database, request_ids: set[Any]) -> list[dict[str, Any]]:
+    """Plates of the given material requests, added up per plate type."""
+    totals: dict[str, int] = defaultdict(int)
+    ids = [i for i in request_ids if i]
+    async for request in db[MATERIAL_REQUESTS].find({"_id": {"$in": ids}}):
+        for line in request["plates"]:
+            totals[line["plate_type"]] += line["quantity"]
+    return [{"plate_type": t, "quantity": n} for t, n in sorted(totals.items())]
 
 
 async def received(db: Database, frame: dict[str, Any]) -> None:
@@ -86,16 +107,6 @@ async def on_hold(db: Database, frame: dict[str, Any]) -> None:
         await _operators(db),
         {"barcode": frame["_id"], "owner_name": owner_name},
     )
-
-
-async def returned(db: Database, frame: dict[str, Any]) -> None:
-    if owner := await _owner(db, frame):
-        await outbox.enqueue(
-            db,
-            "returned",
-            [outbox.recipient(owner)],
-            {"name": owner["name"], "barcode": frame["_id"]},
-        )
 
 
 async def measurement_done(db: Database, barcode: str) -> None:

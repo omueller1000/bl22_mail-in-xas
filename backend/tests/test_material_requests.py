@@ -214,9 +214,60 @@ async def test_shipping_list_groups_issued_frames_by_user(client: AsyncClient) -
 
     groups = (await client.get(f"{API}/frames/shipping")).json()
     by_orcid = {group["user"]["orcid"]: group for group in groups}
-    assert sorted(by_orcid[orcid(1)]["barcodes"]) == sorted(ada)
-    assert by_orcid[orcid(2)]["barcodes"] == bob
+    [ada_request] = by_orcid[orcid(1)]["requests"]
+    assert ada_request["barcodes"] == sorted(ada)
+    assert ada_request["number"] is not None
+    assert by_orcid[orcid(2)]["requests"][0]["barcodes"] == bob
+    assert by_orcid[orcid(1)]["returning"] == []
     assert by_orcid[orcid(1)]["user"]["shipping_address"]["city"] == "Example City"
+
+
+async def returning_frame(client: AsyncClient, raw_db: Any, user_orcid: str) -> str:
+    """A frame of the user that has been back at SSRL and is now marked as returning."""
+    [code] = await issue_to(client, user_orcid, 1)
+    await client.post(f"{API}/frames/ship", json={"barcodes": [code]})
+    await raw_db.frames.update_one(
+        {"_id": code}, {"$set": {"state": "external_storage", "plates.left": "8-circle"}}
+    )
+    await raw_db.measurements.insert_many(
+        [
+            {"frame": code, "position": "Left-A", "number": 1, "status": "done"},
+            {"frame": code, "position": "Left-B", "number": 1, "status": "error"},
+        ]
+    )
+    response = await client.post(
+        f"{API}/scans/apply", json={"action": "return", "barcodes": [code]}
+    )
+    assert response.json()[0]["moved"] is True
+    return code
+
+
+async def test_box_holds_new_material_and_returning_frames(
+    client: AsyncClient, raw_db: Any
+) -> None:
+    back = await returning_frame(client, raw_db, orcid(1))
+    await login_as(client, orcid(1))
+    request = await submit(client, plates=[{"plate_type": "8-circle", "quantity": 2}], frames=1)
+    await login_as(client, orcid(99), role="operator")
+    new = await reserve(client, 1)
+    await client.post(f"{API}/material-requests/{request['id']}/issue", json={"barcodes": new})
+
+    [box] = (await client.get(f"{API}/frames/shipping")).json()
+    [shipment] = box["requests"]
+    assert shipment["number"] == request["number"]
+    assert shipment["plates"] == [{"plate_type": "8-circle", "quantity": 2}]
+    assert shipment["barcodes"] == new
+    [returning] = box["returning"]
+    assert returning["barcode"] == back
+    assert returning["plates"] == {"left": "8-circle", "right": None}
+    assert returning["measurements"] == {"pending": 0, "done": 1, "error": 1}
+
+    response = await client.post(f"{API}/frames/ship", json={"barcodes": new + [back]})
+    assert response.status_code == 200, response.text
+    states = {f["barcode"]: f["state"] for f in response.json()}
+    assert states == {new[0]: "shipped_to_user", back: "returned"}
+    assert (await client.get(f"{API}/frames/shipping")).json() == []
+    assert {r["state"] for r in await requests_of(client, orcid(1))} == {"fulfilled"}
 
 
 async def test_mark_group_shipped(client: AsyncClient) -> None:
@@ -288,9 +339,10 @@ async def test_shipping_a_group_fulfils_all_its_requests(client: AsyncClient) ->
     first = await issue_to(client, orcid(1), 1)
     second = await issue_to(client, orcid(1), 2)
     [group] = (await client.get(f"{API}/frames/shipping")).json()
-    assert sorted(group["barcodes"]) == sorted(first + second)
+    barcodes = [code for request in group["requests"] for code in request["barcodes"]]
+    assert sorted(barcodes) == sorted(first + second)
 
-    await client.post(f"{API}/frames/ship", json={"barcodes": group["barcodes"]})
+    await client.post(f"{API}/frames/ship", json={"barcodes": barcodes})
     assert {r["state"] for r in await requests_of(client, orcid(1))} == {"fulfilled"}
 
 

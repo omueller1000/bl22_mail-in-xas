@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from app.mail import sender
+from app.mail import sender, templates
 from app.mail.outbox import ARRIVAL_WINDOW
 from tests.conftest import (
     ADMIN,
@@ -113,8 +113,9 @@ async def test_frame_journey_emails(client: AsyncClient, raw_db: Any) -> None:
     assert shipped["data"]["frames"] == sorted(codes)
 
     # Two declared frames arrive: one email collects both. The third is on hold.
+    declared = {"at": datetime.now(UTC), "by": {"orcid": orcid(1), "name": "Ada Test"}}
     await raw_db.frames.update_many(
-        {"_id": {"$in": codes[:2]}}, {"$set": {"safety_declared": {"at": datetime.now(UTC)}}}
+        {"_id": {"$in": codes[:2]}}, {"$set": {"safety_declared": declared}}
     )
     for code in codes:
         await client.post(f"{API}/scans/apply", json={"action": "receive", "barcodes": [code]})
@@ -124,9 +125,34 @@ async def test_frame_journey_emails(client: AsyncClient, raw_db: Any) -> None:
     assert len(await outbox(raw_db, "on_hold")) == 1
     assert len(await outbox(raw_db, "on_hold_staff")) == 1
 
+    # Marking a frame as returning sends nothing; shipping it does, in the shipment email.
     await client.post(f"{API}/scans/apply", json={"action": "return", "barcodes": [codes[0]]})
-    [returned] = await outbox(raw_db, "returned")
-    assert returned["data"]["barcode"] == codes[0]
+    assert await outbox(raw_db, "returned") == []
+    await client.post(f"{API}/frames/ship", json={"barcodes": [codes[0]]})
+    shipments = await outbox(raw_db, "shipped")
+    assert len(shipments) == 2
+    back = next(s for s in shipments if s["data"].get("returned"))
+    assert back["data"]["returned"] == [codes[0]]
+    assert back["data"]["frames"] == [] and back["data"]["plates"] == []
+
+
+def test_shipment_email_lists_new_material_and_returned_frames() -> None:
+    data = {
+        "name": "Ada",
+        "frames": ["AAAA-AAAB"],
+        "plates": [{"plate_type": "8-circle", "quantity": 2}],
+        "returned": ["AAAA-AACT"],
+    }
+    email = templates.render("shipped", data, "https://host/mail-in-xas/")
+    assert email.subject == "BL22 mail-in XAS: 1 new and 1 returned frame(s) shipped to you"
+    assert "  - Frame AAAA-AAAB (new)" in email.text
+    assert "  - 2 × 8-Circle plate" in email.text
+    assert "  - Frame AAAA-AACT with your samples (returned)" in email.text
+    only_back = templates.render(
+        "shipped", {"name": "Ada", "returned": ["AAAA-AACT"]}, "https://host/mail-in-xas/"
+    )
+    assert only_back.subject == "BL22 mail-in XAS: 1 frame(s) returned to you"
+    assert "new material" not in only_back.text
 
 
 async def test_frame_complete_email(

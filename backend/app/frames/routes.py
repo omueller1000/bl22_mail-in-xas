@@ -3,21 +3,12 @@
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, status
-from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.auth.dependencies import CurrentUser, Db, Operator, ensure_operator, is_operator
 from app.frames import repository as frames
-from app.frames.models import (
-    BarcodeList,
-    Frame,
-    Recipient,
-    ReserveBarcodes,
-    ShippingGroup,
-)
+from app.frames.models import Frame, ReserveBarcodes
 from app.frames.states import FrameState
 from app.frames.views import frame_model, frame_models
-from app.mail import notify
-from app.material_requests import repository as material_requests
 from app.pagination import (
     Page,
     PageNumber,
@@ -85,62 +76,6 @@ async def list_all_frames(
         db[frames.COLLECTION], query, sort=sort_field, order=order, page=page, page_size=page_size
     )
     return Page(items=await frame_models(db, docs), total=total, page=page, page_size=page_size)
-
-
-@router.get("/shipping")
-async def shipping_list(_: Operator, db: Db) -> list[ShippingGroup]:
-    """Issued but not yet shipped frames, grouped by user, with shipping details (§9.3)."""
-    groups = await frames.issued_by_owner(db)
-    owners = await users.get_many(db, set(groups))
-    result = [
-        ShippingGroup(
-            user=Recipient(id=str(owner_id), **owners[owner_id]),
-            barcodes=[doc["_id"] for doc in docs],
-        )
-        for owner_id, docs in groups.items()
-    ]
-    return sorted(result, key=lambda group: group.user.name)
-
-
-@router.post("/ship")
-async def mark_shipped(body: BarcodeList, operator: Operator, db: Db) -> list[Frame]:
-    """Mark issued frames as shipped to their users (all or nothing).
-
-    Material requests whose frames have all shipped become fulfilled.
-    """
-    barcodes = list(dict.fromkeys(body.barcodes))
-
-    async def ship(session: AsyncClientSession) -> None:
-        found = (
-            await db[frames.COLLECTION].find({"_id": {"$in": barcodes}}, session=session).to_list()
-        )
-        states = {doc["_id"]: doc["state"] for doc in found}
-        problems = [
-            f"{code}: {'unknown barcode' if code not in states else states[code]}"
-            for code in barcodes
-            if states.get(code) != FrameState.ISSUED.value
-        ]
-        if problems:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Not issued: " + "; ".join(problems))
-        moved = await frames.transition(
-            db,
-            session,
-            barcodes,
-            from_state=FrameState.ISSUED,
-            to_state=FrameState.SHIPPED_TO_USER,
-            by=operator,
-        )
-        if moved != len(barcodes):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Frames changed, please reload")
-        await material_requests.fulfil_if_shipped(
-            db, session, {doc["request_id"] for doc in found if doc.get("request_id")}
-        )
-
-    async with db.client.start_session() as session:
-        await session.with_transaction(ship)
-    shipped = await frames.find(db, {"_id": {"$in": barcodes}})
-    await notify.shipped(db, shipped)
-    return await frame_models(db, shipped)
 
 
 @router.get("/{barcode}")

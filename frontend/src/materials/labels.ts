@@ -34,13 +34,17 @@ export const FRAME_STATE_LABELS: Record<FrameState, string> = {
   internal_storage: "Internal storage",
   scheduled: "Scheduled",
   loaded: "Loaded",
+  returning_to_user: "Returning to user",
   returned: "Returned",
   void: "Void",
 };
 
 /** Badge colour of a frame state; undefined = the theme's default colour. */
 export function frameStateColor(state: FrameState): string | undefined {
-  return state === "received_on_hold" ? "red" : undefined;
+  if (state === "received_on_hold") return "red";
+  // Waiting for the next shipment back to the user.
+  if (state === "returning_to_user") return IN_PROGRESS_COLOR;
+  return undefined;
 }
 
 export function formatDateTime(iso: string): string {

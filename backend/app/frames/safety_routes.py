@@ -27,7 +27,12 @@ from app.samples import repository as samples
 router = APIRouter(prefix="/frames", tags=["safety and lock"])
 
 DECLARABLE_STATES = {FrameState.ISSUED, FrameState.SHIPPED_TO_USER, FrameState.RECEIVED_ON_HOLD}
-NO_UNLOCK_STATES = {FrameState.SCHEDULED, FrameState.LOADED, *TERMINAL}
+NO_UNLOCK_STATES = {
+    FrameState.SCHEDULED,
+    FrameState.LOADED,
+    FrameState.RETURNING_TO_USER,
+    *TERMINAL,
+}
 
 
 class DeclareSafe(BaseModel):

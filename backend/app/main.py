@@ -27,6 +27,7 @@ from app.frames import config_routes as frame_config_routes
 from app.frames import repository as frames
 from app.frames import routes as frames_routes
 from app.frames import safety_routes
+from app.frames import shipping as shipping_routes
 from app.instrument import admin_routes as service_client_routes
 from app.instrument import keys as api_keys
 from app.instrument import routes as instrument_routes
@@ -98,6 +99,8 @@ def create_app(
         app.include_router(auth_routes.dev_router, prefix=prefix)
     app.include_router(users_routes.router, prefix=prefix)
     app.include_router(catalog.router, prefix=prefix)
+    # Before frames_routes, whose /frames/{barcode} would otherwise catch /frames/shipping.
+    app.include_router(shipping_routes.router, prefix=prefix)
     app.include_router(frames_routes.router, prefix=prefix)
     app.include_router(frame_config_routes.router, prefix=prefix)
     app.include_router(safety_routes.router, prefix=prefix)

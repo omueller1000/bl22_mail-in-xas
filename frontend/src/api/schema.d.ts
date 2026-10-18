@@ -256,6 +256,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/frames/shipping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shipping List
+         * @description Per user: issued material and returning frames still to be shipped.
+         */
+        get: operations["shipping_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/frames/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Shipped
+         * @description Ship a box, all or nothing: issued frames become shipped to the user, returning frames
+         *     returned. Material requests whose frames have all shipped become fulfilled. The user gets one
+         *     email listing the whole shipment.
+         */
+        post: operations["mark_shipped"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/frames/reserve": {
         parameters: {
             query?: never;
@@ -312,48 +354,6 @@ export interface paths {
         get: operations["list_all_frames"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/frames/shipping": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Shipping List
-         * @description Issued but not yet shipped frames, grouped by user, with shipping details (§9.3).
-         */
-        get: operations["shipping_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/frames/ship": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Mark Shipped
-         * @description Mark issued frames as shipped to their users (all or nothing).
-         *
-         *     Material requests whose frames have all shipped become fulfilled.
-         */
-        post: operations["mark_shipped"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1551,7 +1551,7 @@ export interface components {
          * FrameState
          * @enum {string}
          */
-        FrameState: "reserved" | "issued" | "shipped_to_user" | "received" | "received_on_hold" | "external_storage" | "internal_storage" | "scheduled" | "loaded" | "returned" | "void";
+        FrameState: "reserved" | "issued" | "shipped_to_user" | "received" | "received_on_hold" | "external_storage" | "internal_storage" | "scheduled" | "loaded" | "returning_to_user" | "returned" | "void";
         /** FrameWarning */
         FrameWarning: {
             /** Barcode */
@@ -1803,7 +1803,10 @@ export interface components {
             /** Energy Max */
             energy_max: number;
         };
-        /** MeasurementProgress */
+        /**
+         * MeasurementProgress
+         * @description How many of a frame's measurements are in each status.
+         */
         MeasurementProgress: {
             /** Pending */
             pending: number;
@@ -2092,6 +2095,13 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** ReturningFrame */
+        ReturningFrame: {
+            /** Barcode */
+            barcode: string;
+            plates: components["schemas"]["Plates"];
+            measurements: components["schemas"]["MeasurementProgress"];
+        };
         /**
          * Role
          * @description Person roles, in increasing order of privilege.
@@ -2214,11 +2224,27 @@ export interface components {
             /** Keys */
             keys: components["schemas"]["ApiKey"][];
         };
+        /**
+         * ShipmentRequest
+         * @description A material request's part of a shipment: its plates and its issued frames.
+         */
+        ShipmentRequest: {
+            /** Id */
+            id: string | null;
+            /** Number */
+            number: number | null;
+            /** Plates */
+            plates: components["schemas"]["PlateQuantity"][];
+            /** Barcodes */
+            barcodes: string[];
+        };
         /** ShippingGroup */
         ShippingGroup: {
             user: components["schemas"]["Recipient"];
-            /** Barcodes */
-            barcodes: string[];
+            /** Requests */
+            requests: components["schemas"]["ShipmentRequest"][];
+            /** Returning */
+            returning: components["schemas"]["ReturningFrame"][];
         };
         /**
          * Side
@@ -2922,6 +2948,59 @@ export interface operations {
             };
         };
     };
+    shipping_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingGroup"][];
+                };
+            };
+        };
+    };
+    mark_shipped: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BarcodeList"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Frame"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reserve_barcodes: {
         parameters: {
             query?: never;
@@ -3010,59 +3089,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_Frame_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    shipping_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ShippingGroup"][];
-                };
-            };
-        };
-    };
-    mark_shipped: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BarcodeList"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Frame"][];
                 };
             };
             /** @description Validation Error */

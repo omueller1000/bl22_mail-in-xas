@@ -41,7 +41,7 @@ const ACTIONS: { action: ScanAction; label: string; icon: ReactNode; color: stri
   },
   {
     action: "return",
-    label: "mark as returned to user",
+    label: "mark as returning to user",
     icon: <IconTruckReturn size={18} />,
     color: "grape"
   },

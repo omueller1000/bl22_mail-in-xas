@@ -11,7 +11,7 @@ const SAFETY_STATEMENT =
   "I declare that all samples on this frame are solid and non-hazardous.";
 
 const DECLARABLE_STATES = ["issued", "shipped_to_user", "received_on_hold"];
-const NO_UNLOCK_STATES = ["scheduled", "loaded", "returned", "void"];
+const NO_UNLOCK_STATES = ["scheduled", "loaded", "returning_to_user", "returned", "void"];
 
 /** Safety declaration (owner only) and lock (owner or Operator), requirements §6.4. */
 export function SafetyCard({ frame, isOwner }: { frame: Frame; isOwner: boolean }) {

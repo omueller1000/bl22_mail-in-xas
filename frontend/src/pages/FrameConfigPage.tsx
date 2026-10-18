@@ -45,7 +45,7 @@ import { SamplePicker } from "../frames/SamplePicker";
 import { FrameStateBadge } from "../frames/FrameStateBadge";
 
 const CONFIGURABLE_STATES = ["issued", "shipped_to_user"];
-const MEASUREMENTS_FROZEN_STATES = ["scheduled", "loaded", "returned", "void"];
+const MEASUREMENTS_FROZEN_STATES = ["scheduled", "loaded", "returning_to_user", "returned", "void"];
 
 /** Mount plates, place samples, define measurements, declare safety and lock (§6.4, §8). */
 export function FrameConfigPage() {

@@ -111,12 +111,12 @@ describe("ScanPage", () => {
     expect(within(scannedTable()).getByText("Box 3, iron oxides")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "mark as received AAAA-AAAA" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "move to external storage AAAA-AAAA" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "mark as returned to user AAAA-AAAA" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "mark as returning to user AAAA-AAAA" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "void frame AAAA-AAAA" })).toBeEnabled();
     for (const label of [
       "mark as received",
       "move to external storage",
-      "mark as returned to user",
+      "mark as returning to user",
       "void frame",
     ]) {
       expect(screen.getByRole("button", { name: `${label} BBBB-BBBB` })).toBeDisabled();

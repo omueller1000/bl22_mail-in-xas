@@ -7,5 +7,6 @@ describe("frameStateColor", () => {
     expect(frameStateColor("received_on_hold")).toBe("red");
     expect(frameStateColor("received")).toBeUndefined();
     expect(frameStateColor("internal_storage")).toBeUndefined();
+    expect(frameStateColor("returning_to_user")).toBe("indigo");
   });
 });

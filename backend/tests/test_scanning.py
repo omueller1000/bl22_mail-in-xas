@@ -121,7 +121,7 @@ async def test_lookup_reports_every_action(client: AsyncClient, raw_db: Any) -> 
     assert stored_actions == {
         "receive": None,
         "external_storage": "external_storage",
-        "return": "returned",
+        "return": "returning_to_user",
         "void": "void",
     }
     assert by_code[stored]["safe"] is True and by_code[stored]["locked"] is True
@@ -143,8 +143,10 @@ async def test_users_cannot_scan(client: AsyncClient) -> None:
     ("action", "start", "end"),
     [
         ("external_storage", "received", "external_storage"),
-        ("return", "received_on_hold", "returned"),
-        ("return", "external_storage", "returned"),
+        ("return", "received_on_hold", "returning_to_user"),
+        ("return", "external_storage", "returning_to_user"),
+        # Undo "mark as returning to user".
+        ("external_storage", "returning_to_user", "external_storage"),
         ("void", "reserved", "void"),
         ("void", "scheduled", "void"),
     ],
@@ -163,6 +165,7 @@ async def test_group_actions(
     [
         ("external_storage", "shipped_to_user"),
         ("return", "issued"),
+        ("return", "returning_to_user"),
         ("void", "returned"),
         ("void", "void"),
     ],

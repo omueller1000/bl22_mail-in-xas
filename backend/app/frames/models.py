@@ -123,11 +123,6 @@ class Recipient(BaseModel):
     shipping_address: Address
 
 
-class ShippingGroup(BaseModel):
-    user: Recipient
-    barcodes: list[str]
-
-
 def user_ref(user: dict[str, Any] | None) -> UserRef | None:
     if user is None:
         return None
