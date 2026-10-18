@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from app.frames.repository import BARCODE_PATTERN
+from app.frames import barcodes
 from tests.conftest import API, login_as, orcid
 
 pytestmark = pytest.mark.db
@@ -32,7 +32,8 @@ async def test_operator_reserves_unique_barcodes(client: AsyncClient) -> None:
     codes = await reserve(client, 25)
 
     assert len(set(codes)) == 25
-    assert all(BARCODE_PATTERN.fullmatch(code) for code in codes)
+    assert all(barcodes.NEW_PATTERN.fullmatch(code) for code in codes)
+    assert all(barcodes.problem(code) is None for code in codes)
     listed = await client.get(f"{API}/frames", params={"all_users": True, "state": "reserved"})
     assert {f["barcode"] for f in listed.json()} == set(codes)
 

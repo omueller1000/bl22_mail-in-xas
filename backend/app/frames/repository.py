@@ -5,9 +5,6 @@ Document: {_id: barcode, state, owner_id, request_id, note, plates: {left, right
            version, history: [{state, at, actor}], created_at, updated_at}
 """
 
-import re
-import secrets
-import string
 from datetime import UTC, datetime
 from typing import Any
 
@@ -17,17 +14,10 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.errors import BulkWriteError
 
 from app.db import Database
+from app.frames import barcodes
 from app.frames.states import FrameState
 
 COLLECTION = "frames"
-
-BARCODE_PATTERN = re.compile(r"[A-Z]{4}-[A-Z]{4}")
-
-
-def new_barcode() -> str:
-    """Random v1-style barcode XXXX-XXXX (uppercase letters; 26^8 ≈ 2·10^11 combinations)."""
-    letters = "".join(secrets.choice(string.ascii_uppercase) for _ in range(8))
-    return f"{letters[:4]}-{letters[4:]}"
 
 
 def normalize_barcode(value: str) -> str:
@@ -51,7 +41,7 @@ async def reserve(db: Database, count: int, by: dict[str, Any]) -> list[dict[str
     while len(created) < count:
         docs = [
             {
-                "_id": new_barcode(),
+                "_id": barcodes.new_barcode(),
                 "state": FrameState.RESERVED.value,
                 "owner_id": None,
                 "request_id": None,

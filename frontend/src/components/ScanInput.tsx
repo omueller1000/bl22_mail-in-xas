@@ -1,7 +1,7 @@
 import { TextInput } from "@mantine/core";
 import { useRef, useState } from "react";
 
-export const BARCODE_PATTERN = /^[A-Z]{4}-[A-Z]{4}$/;
+import { barcodeProblem } from "./barcodes";
 
 interface Props {
   onScan: (barcode: string) => void;
@@ -22,7 +22,7 @@ export function ScanInput({ onScan, label = "Scan barcode", disabled }: Props) {
     <TextInput
       ref={ref}
       label={label}
-      placeholder="ABCD-EFGH"
+      placeholder="ABC-DEF"
       value={value}
       error={error}
       disabled={disabled}
@@ -37,8 +37,9 @@ export function ScanInput({ onScan, label = "Scan barcode", disabled }: Props) {
         event.preventDefault();
         const code = value.trim().toUpperCase();
         if (!code) return;
-        if (!BARCODE_PATTERN.test(code)) {
-          setError(`"${code}" is not a barcode (format ABCD-EFGH)`);
+        const problem = barcodeProblem(code);
+        if (problem) {
+          setError(problem);
           return;
         }
         onScan(code);

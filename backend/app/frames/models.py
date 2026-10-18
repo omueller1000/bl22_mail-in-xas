@@ -3,15 +3,16 @@ from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.frames.repository import BARCODE_PATTERN, normalize_barcode
+from app.frames import barcodes
+from app.frames.repository import normalize_barcode
 from app.frames.states import FrameState
 from app.users.models import Address
 
 
 def _validate_barcode(value: str) -> str:
     value = normalize_barcode(value)
-    if not BARCODE_PATTERN.fullmatch(value):
-        raise ValueError("barcode must look like ABCD-EFGH")
+    if problem := barcodes.problem(value):
+        raise ValueError(problem)
     return value
 
 

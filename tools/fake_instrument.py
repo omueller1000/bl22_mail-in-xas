@@ -30,7 +30,8 @@ from typing import Any
 import httpx
 
 FILENAME = re.compile(
-    r"^(?P<barcode>[A-Z]{4}-[A-Z]{4})_(?P<position>(Left|Right)-[A-Z])_(?P<batch>\d+)_"
+    r"^(?P<barcode>[A-Z]{3}-[A-Z]{3}|[A-Z]{4}-[A-Z]{4})_"
+    r"(?P<position>(Left|Right)-[A-Z])_(?P<batch>\d+)_"
     r"(?P<element>[A-Z][a-z]?)_(?P<edge>K|L1|L2|L3)_(?P<technique>[A-Z]+)_(?P<sweep>\d+)\.txt$"
 )
 

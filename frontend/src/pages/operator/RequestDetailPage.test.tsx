@@ -99,6 +99,6 @@ describe("issuing frames for a request by scanning", () => {
     await screen.findByText("Request #3");
 
     await scan("hello");
-    expect(screen.getByText('"HELLO" is not a barcode (format ABCD-EFGH)')).toBeInTheDocument();
+    expect(screen.getByText('"HELLO" is not a barcode (format ABC-DEF)')).toBeInTheDocument();
   });
 });

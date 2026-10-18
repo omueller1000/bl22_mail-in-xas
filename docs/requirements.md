@@ -169,7 +169,9 @@ Number of sweeps is decided by the control software, not the user.
 
 A **frame** is the physical holder; it carries a unique **barcode** and up to two **plates** (Left, Right). A frame record exists from the moment its barcode is reserved.
 
-- **Barcode format:** `XXXX-XXXX`, uppercase letters A–Z, generated server-side, unique, **never reused**. Encoded as **Code128** (1D).
+- **Barcode format:** `ABC-DEF`: five random uppercase letters plus a **check letter** (Luhn mod 26) as the sixth, shown as 3 + 3 (e.g. `KQZ-TBW`); 26⁵ ≈ 11.9 million codes. Generated server-side, unique, **never reused**. Encoded as **Code128** (1D).
+- The check letter catches every single mistyped letter and almost every swap of two neighbouring letters, without a database lookup; the scan field and the backend reject codes whose check letter does not match. Algorithm (also for the control software): A=0 … Z=25; going from the rightmost of the five letters leftwards, double every other value starting with the rightmost, replace each doubled value v by ⌊v/26⌋ + v mod 26, sum everything; check = (26 − sum mod 26) mod 26.
+- **Old format** `ABCD-EFGH` (eight letters, no check letter; v1 and v2.0–2.2) stays valid for existing frames and is no longer generated. Both formats are accepted everywhere.
 - Operators print labels manually on a handheld label printer; the portal shows the reserved codes so they can be typed/printed.
 - Each frame stores: barcode, owner (once issued), state, lock flag, safety declaration, internal-storage location (when applicable), plates, an optional free-text **note** by the user (e.g. "batch 2, Fe catalysts"; editable until the safety declaration), state history (state, actor, timestamp).
 
