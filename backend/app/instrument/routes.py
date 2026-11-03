@@ -17,7 +17,8 @@ from app.auth.dependencies import Db
 from app.data import repository as data
 from app.data.models import SweepInfo, SweepUpload, sweep_info
 from app.frames import repository as frames
-from app.frames.models import StorageLocation
+from app.frames.configuration import side_of
+from app.frames.models import Plates, StorageLocation
 from app.frames.states import FrameState
 from app.instrument.keys import Instrument, client_actor
 from app.mail import notify
@@ -53,6 +54,8 @@ class InstrumentMeasurement(BaseModel):
 
 class InstrumentPosition(BaseModel):
     position: str
+    # Plate type id (e.g. "8-slot"); with the position label it locates the sample.
+    plate_type: str
     sample_id: str
     sample_name: str
     measurements: list[InstrumentMeasurement]
@@ -65,6 +68,8 @@ class InstrumentFrame(BaseModel):
     safe: bool
     storage: StorageLocation | None
     owner: str | None
+    # Plate type ids mounted on each side, also those without samples.
+    plates: Plates
     positions: list[InstrumentPosition]
 
 
@@ -142,6 +147,7 @@ async def _frame_models(db: Db, docs: list[dict[str, Any]]) -> list[InstrumentFr
 
     result = []
     for d in docs:
+        plates = Plates(**(d.get("plates") or {}))
         positions = []
         for p in d.get("positions", []):
             ms = [
@@ -152,6 +158,7 @@ async def _frame_models(db: Db, docs: list[dict[str, Any]]) -> list[InstrumentFr
             positions.append(
                 InstrumentPosition(
                     position=p["position"],
+                    plate_type=getattr(plates, side_of(p["position"]).value),
                     sample_id=str(p["sample_id"]),
                     sample_name=names.get(p["sample_id"], "(deleted sample)"),
                     measurements=[
@@ -181,6 +188,7 @@ async def _frame_models(db: Db, docs: list[dict[str, Any]]) -> list[InstrumentFr
                 safe=bool(d.get("safety_declared")),
                 storage=StorageLocation(**d["storage"]) if d.get("storage") else None,
                 owner=owner["name"] if owner else None,
+                plates=plates,
                 positions=positions,
             )
         )

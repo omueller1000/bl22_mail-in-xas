@@ -445,12 +445,14 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 
 | Purpose | Endpoint (indicative) |
 |---|---|
-| Measurement definitions for one frame (positions, samples, measurements incl. status, last batch and sweep numbers) | `GET /instrument/frames/{barcode}` |
+| Measurement definitions for one frame (plate type per side, positions with their plate type, samples, measurements incl. status, last batch and sweep numbers) | `GET /instrument/frames/{barcode}` |
 | All frames in internal storage (barcode, container, slot, state, locked) | `GET /instrument/storage/internal` |
 | Locked frames in internal storage with their pending measurements | `GET /instrument/queue` |
 | Change frame state (`scheduled`, `loaded`, back to `internal_storage`) | `POST /instrument/frames/{barcode}/state` |
 | Set measurement status (`pending`, `done`, `error` + message) | `PUT /instrument/measurements/{id}/status` |
 | Upload raw sweep data | `POST /instrument/measurements/{id}/sweeps` |
+
+The position label (e.g. `Right-A`) alone does not locate a sample: 8-Circle and 8-Slot plates share the labels A–H at different places. Frames therefore report `plates` (plate type id per side, also for plates without samples) and each position its `plate_type` (since v2.5.0). Ids are the catalog ids of §5.1: `8-circle`, `8-slot`, `6-circle-gas`.
 
 Upload rules:
 - The control software sends `batch_no` and `sweep_no` with each raw upload; it chooses them (the frame endpoint reports each measurement's last batch and sweep). A **re-measure** sets the status back to `pending` (API only for now); the re-run then uses the next batch number and continues the sweep numbers.

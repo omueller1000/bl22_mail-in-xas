@@ -1602,6 +1602,7 @@ export interface components {
             storage: components["schemas"]["StorageLocation"] | null;
             /** Owner */
             owner: string | null;
+            plates: components["schemas"]["Plates"];
             /** Positions */
             positions: components["schemas"]["InstrumentPosition"][];
         };
@@ -1629,6 +1630,8 @@ export interface components {
         InstrumentPosition: {
             /** Position */
             position: string;
+            /** Plate Type */
+            plate_type: string;
             /** Sample Id */
             sample_id: string;
             /** Sample Name */

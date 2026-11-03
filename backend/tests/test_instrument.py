@@ -136,6 +136,10 @@ async def test_frame_and_storage(client: AsyncClient, raw_db: Any, instrument: A
     ready = await ready_frame(client, raw_db)
     frame = (await instrument.get(f"{API}/instrument/frames/{ready['code'].lower()}")).json()
     assert frame["barcode"] == ready["code"] and frame["locked"] and frame["safe"]
+    # The position label alone does not locate a sample; its plate type does.
+    assert frame["plates"] == {"left": "8-circle", "right": None}
+    [position] = frame["positions"]
+    assert position["position"] == "Left-A" and position["plate_type"] == "8-circle"
     storage = (await instrument.get(f"{API}/instrument/storage/internal")).json()
     assert storage == [
         {
