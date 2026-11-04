@@ -5,7 +5,7 @@ import { frameRange, MAX_FRAMES_PER_REQUEST } from "./plates";
 
 const TYPES: PlateType[] = [
   { id: "8-circle", name: "8-Circle", positions: [], sides: ["left", "right"], blocks_other_side: false },
-  { id: "6-circle-gas", name: "6-Circle-Gas", positions: [], sides: ["left"], blocks_other_side: true },
+  { id: "8-circle-gas", name: "8-Circle-Gas", positions: [], sides: ["left"], blocks_other_side: true },
 ];
 
 describe("frameRange", () => {
@@ -14,7 +14,7 @@ describe("frameRange", () => {
   });
 
   it("gives each gas plate a frame of its own", () => {
-    expect(frameRange(TYPES, { "6-circle-gas": 2, "8-circle": 2 })).toEqual([3, 4]);
+    expect(frameRange(TYPES, { "8-circle-gas": 2, "8-circle": 2 })).toEqual([3, 4]);
   });
 
   it("allows frames without plates", () => {

@@ -1,6 +1,6 @@
 import type { Frame, PlateType } from "../api/client";
 
-/** "8-Circle | 8-Slot", "8-Circle | empty", "6-Circle-Gas" (whole frame) or "—". */
+/** "8-Circle | 8-Slot", "8-Circle | empty", "8-Circle-Gas" (whole frame) or "—". */
 export function plateSummary(frame: Pick<Frame, "plates">, plateTypes: PlateType[]): string {
   const left = plateTypes.find((t) => t.id === frame.plates.left);
   const right = plateTypes.find((t) => t.id === frame.plates.right);

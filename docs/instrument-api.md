@@ -4,7 +4,7 @@ How the beamline control software (C#) talks to the mail-in XAS portal backend. 
 developer (or an AI assistant) working in the control-software code base who has **no access to
 the portal's source**. The authoritative contract is the backend code
 (`backend/app/instrument/routes.py`, `backend/app/data/models.py`) and requirements §6.3, §10.2
-and §11.1; this guide summarises them as of portal **v2.5.0**.
+and §11.1; this guide summarises them as of portal **v2.5.1**.
 
 ---
 
@@ -38,7 +38,7 @@ never changes anything else (owners, samples, measurement settings, storage slot
   directly. Requests through the public `www-ssrl.slac.stanford.edu` proxy get **403**.
 - Dev and production have **separate databases and separate API keys**. Test against dev first.
 - `GET /health` → `200 {"status": "ok", "database": "ok", "environment": "production",
-  "version": "2.5.0"}`; `503` with `"database": "unreachable"` if MongoDB is down. Useful as a
+  "version": "2.5.1"}`; `503` with `"database": "unreachable"` if MongoDB is down. Useful as a
   start-up connectivity check and for logging the portal version.
 
 ### Authentication
@@ -135,10 +135,10 @@ Use after scanning a barcode, or to refresh one frame. Works in any state (it is
 ```
 
 - `storage` is `null` when the frame is not in a slot; `owner` is `null` for unissued frames.
-- `position` is `<Side>-<Label>`: Side ∈ `Left`, `Right`; Label `A`–`H` (8-position plates) or
-  `A`–`F` (6-Circle-Gas plate, Left only). Positions without a sample are not listed.
+- `position` is `<Side>-<Label>`: Side ∈ `Left`, `Right`; Label `A`–`H` (all plate types;
+  the 8-Circle-Gas plate only on the Left). Positions without a sample are not listed.
 - **A sample is located by `plate_type` + `position`**, not by the position alone: 8-Circle and
-  8-Slot plates both have labels A–H, at different places.
+  8-Slot plates both have labels A–H, at different places (and so has 8-Circle-Gas).
 - `plates`: the plate type mounted on each side (`null` = empty side), including plates that
   carry no samples. Each position's `plate_type` equals `plates[side]`. Plates cannot change
   once the frame is declared safe, so they are fixed for every frame the instrument sees in the
@@ -148,7 +148,7 @@ Use after scanning a barcode, or to refresh one frame. Works in any state (it is
   |---|---|---|---|
   | `8-circle` | A–H | left or right | |
   | `8-slot` | A–H | left or right | |
-  | `6-circle-gas` | A–F | left only | spans the whole frame; `right` is then `null` |
+  | `8-circle-gas` | A–H | left only | spans the whole frame; `right` is then `null` |
 
   Ids are stable; new plate types may be added later (treat an unknown id as "cannot measure").
 - Measurements are sorted by `number` (1, 2, … per position).

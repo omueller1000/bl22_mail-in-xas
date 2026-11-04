@@ -9,7 +9,7 @@ import { MaterialsPage } from "./MaterialsPage";
 
 const PLATE_TYPES: PlateType[] = [
   { id: "8-circle", name: "8-Circle", positions: [..."ABCDEFGH"], sides: ["left", "right"], blocks_other_side: false },
-  { id: "6-circle-gas", name: "6-Circle-Gas", positions: [..."ABCDEF"], sides: ["left"], blocks_other_side: true },
+  { id: "8-circle-gas", name: "8-Circle-Gas", positions: [..."ABCDEFGH"], sides: ["left"], blocks_other_side: true },
 ];
 
 async function setNumber(label: string, value: string) {
@@ -63,7 +63,7 @@ describe("MaterialsPage", () => {
     await screen.findByText("8-Circle");
 
     await setNumber("8-Circle", "2");
-    await setNumber("6-Circle-Gas", "1");
+    await setNumber("8-Circle-Gas", "1");
     // 1 gas plate + 2 others => between 2 and 3 frames; 1 is too few.
     await setNumber("Frames", "1");
     expect(screen.getByText("Between 2 and 3 for these plates")).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe("MaterialsPage", () => {
     expect(await post.json()).toEqual({
       plates: [
         { plate_type: "8-circle", quantity: 2 },
-        { plate_type: "6-circle-gas", quantity: 1 },
+        { plate_type: "8-circle-gas", quantity: 1 },
       ],
       frames: 2,
       comment: null,

@@ -38,7 +38,7 @@ export function FrameView({ frame, plateTypes, onPositionClick, selected, maxWid
   const left = type(frame.plates.left);
   const right = type(frame.plates.right);
 
-  // A plate spanning the whole frame (6-Circle-Gas) is drawn once; otherwise one per side.
+  // A plate spanning the whole frame (8-Circle-Gas) is drawn once; otherwise one per side.
   const mounted: { side: Side; plate: PlateType | undefined }[] = left?.blocks_other_side
     ? [{ side: "left", plate: left }]
     : right?.blocks_other_side

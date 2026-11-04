@@ -76,12 +76,12 @@ async def test_user_submits_and_lists_own_requests(client: AsyncClient) -> None:
         ([{"plate_type": "8-circle", "quantity": 4}], 5),  # at most 4
         (
             [
-                {"plate_type": "6-circle-gas", "quantity": 2},
+                {"plate_type": "8-circle-gas", "quantity": 2},
                 {"plate_type": "8-circle", "quantity": 2},
             ],
             2,
         ),
-        ([{"plate_type": "8-circle-gas", "quantity": 1}], 1),  # obsolete type
+        ([{"plate_type": "6-circle-gas", "quantity": 1}], 1),  # obsolete type
         ([{"plate_type": "8-circle", "quantity": 1}, {"plate_type": "8-circle", "quantity": 1}], 1),
         ([], 0),
     ],

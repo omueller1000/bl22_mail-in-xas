@@ -23,7 +23,7 @@ const GROUP: ShippingGroup = {
       number: 12,
       plates: [
         { plate_type: "8-circle", quantity: 4 },
-        { plate_type: "6-circle-gas", quantity: 1 },
+        { plate_type: "8-circle-gas", quantity: 1 },
       ],
       barcodes: ["AAAA-AAAA", "BBBB-BBBB"],
     },
@@ -44,7 +44,7 @@ const GROUP: ShippingGroup = {
 
 const PLATE_TYPES = [
   { id: "8-circle", name: "8-Circle", positions: [], sides: ["left", "right"], blocks_other_side: false },
-  { id: "6-circle-gas", name: "6-Circle-Gas", positions: [], sides: ["left"], blocks_other_side: true },
+  { id: "8-circle-gas", name: "8-Circle-Gas", positions: [], sides: ["left"], blocks_other_side: true },
 ];
 
 describe("ShippingPage", () => {
@@ -78,7 +78,7 @@ describe("ShippingPage", () => {
 
     const box = await screen.findByRole("table", { name: "Shipment to Ada Test" });
     expect(within(box).getByText("Material request #12")).toBeInTheDocument();
-    expect(await within(box).findByText("4 × 8-Circle, 1 × 6-Circle-Gas")).toBeInTheDocument();
+    expect(await within(box).findByText("4 × 8-Circle, 1 × 8-Circle-Gas")).toBeInTheDocument();
     expect(within(box).getByText("2 frames")).toBeInTheDocument();
     expect(within(box).getByText("Returning frames (2)")).toBeInTheDocument();
     const measured = within(box).getByText("CCCC-CCCC").closest("tr")!;

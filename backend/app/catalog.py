@@ -43,9 +43,9 @@ PLATE_TYPES: dict[str, PlateType] = {
             blocks_other_side=False,
         ),
         PlateType(
-            id="6-circle-gas",
-            name="6-Circle-Gas",
-            positions=list("ABCDEF"),
+            id="8-circle-gas",
+            name="8-Circle-Gas",
+            positions=list("ABCDEFGH"),
             sides=[Side.LEFT],
             blocks_other_side=True,
         ),

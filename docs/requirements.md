@@ -137,9 +137,9 @@ Plate types are maintained by Admins but **seeded and fixed** in this version (n
 |---|---|---|---|
 | 8-Circle | A–H | Left or Right | free |
 | 8-Slot | A–H | Left or Right | free |
-| 6-Circle-Gas | A–F | **Left only** | **blocked** (the plate spans the whole frame) |
+| 8-Circle-Gas | A–H | **Left only** | **blocked** (the plate spans the whole frame) |
 
-"Gas" = for gas-sensitive samples. (v1's 8-Circle-Gas plate is obsolete and not implemented.)
+"Gas" = for gas-sensitive samples. 8-Circle-Gas replaced 6-Circle-Gas in v2.5.1 (no frame or request used it); `6-circle-gas` is no longer a valid plate type.
 
 Each plate type is stored as data: name, position labels, allowed sides, whether it blocks the other side, and drawing information (image + position coordinates) for the interactive frame view. Images and position layouts are taken from v1. A future special plate needs only a new catalog entry.
 
@@ -297,7 +297,7 @@ Sent **immediately** (via an outbox in the database and a background sender, wit
 
 - A user requests plates by type and a number of frames:
   - lines: (plate type, quantity N₁), (plate type, quantity N₂), …; total plates ΣN ≥ 1
-  - frames M with **N_gas + ⌈(ΣN − N_gas) / 2⌉ ≤ M ≤ ΣN**, where N_gas is the number of plates that block the other side (6-Circle-Gas), since each of them needs a frame of its own
+  - frames M with **N_gas + ⌈(ΣN − N_gas) / 2⌉ ≤ M ≤ ΣN**, where N_gas is the number of plates that block the other side (8-Circle-Gas), since each of them needs a frame of its own
   - a request may contain **frames only** (ΣN = 0); then M ≥ 1
   - plates, frames and screws are shipped; no return labels.
 - States: `submitted` → `issued` → `fulfilled`, or `submitted` → `rejected`. All-or-nothing; no partial issuing.
@@ -323,7 +323,7 @@ Sent **immediately** (via an outbox in the database and a background sender, wit
 
 Similar to v1's *Create* page:
 1. Choose a frame from a **dropdown of barcodes issued to this user** (state `issued` or `shipped_to_user`).
-2. Choose a plate type for Left and/or Right (any catalog type; one side may be empty; side rules of §5.1 apply, e.g. 6-Circle-Gas only Left and then no Right plate).
+2. Choose a plate type for Left and/or Right (any catalog type; one side may be empty; side rules of §5.1 apply, e.g. 8-Circle-Gas only Left and then no Right plate).
    - Changing or removing a plate whose positions hold samples asks for confirmation and then clears the affected positions, including their measurements (only possible before the safety declaration, §6.6).
 3. Click a position on the plate drawing → assign one of the user's samples. The **sample picker** lists non-archived samples, newest first (by creation date).
 4. Add measurements to occupied positions.
@@ -452,7 +452,7 @@ Base path: `/mail-in-xas/api` (prod), `/mail-in-xas/dev/api` (dev). The list bel
 | Set measurement status (`pending`, `done`, `error` + message) | `PUT /instrument/measurements/{id}/status` |
 | Upload raw sweep data | `POST /instrument/measurements/{id}/sweeps` |
 
-The position label (e.g. `Right-A`) alone does not locate a sample: 8-Circle and 8-Slot plates share the labels A–H at different places. Frames therefore report `plates` (plate type id per side, also for plates without samples) and each position its `plate_type` (since v2.5.0). Ids are the catalog ids of §5.1: `8-circle`, `8-slot`, `6-circle-gas`.
+The position label (e.g. `Right-A`) alone does not locate a sample: 8-Circle and 8-Slot plates share the labels A–H at different places. Frames therefore report `plates` (plate type id per side, also for plates without samples) and each position its `plate_type` (since v2.5.0). Ids are the catalog ids of §5.1: `8-circle`, `8-slot`, `8-circle-gas`.
 
 Upload rules:
 - The control software sends `batch_no` and `sweep_no` with each raw upload; it chooses them (the frame endpoint reports each measurement's last batch and sweep). A **re-measure** sets the status back to `pending` (API only for now); the re-run then uses the next batch number and continues the sweep numbers.

@@ -3,7 +3,7 @@ import { Text } from "@mantine/core";
 import type { MaterialRequest } from "../api/client";
 import { usePlateTypes } from "../api/materials";
 
-/** "4× 8-Circle, 2× 6-Circle-Gas" (or "no plates"). */
+/** "4× 8-Circle, 2× 8-Circle-Gas" (or "no plates"). */
 export function PlateList({ request }: { request: Pick<MaterialRequest, "plates"> }) {
   const { data: types } = usePlateTypes();
   if (request.plates.length === 0) return <Text c="dimmed">no plates</Text>;

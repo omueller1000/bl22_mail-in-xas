@@ -11,7 +11,7 @@ import { FrameConfigPage } from "./FrameConfigPage";
 const PLATE_TYPES: PlateType[] = [
   { id: "8-circle", name: "8-Circle", positions: [..."ABCDEFGH"], sides: ["left", "right"], blocks_other_side: false },
   { id: "8-slot", name: "8-Slot", positions: [..."ABCDEFGH"], sides: ["left", "right"], blocks_other_side: false },
-  { id: "6-circle-gas", name: "6-Circle-Gas", positions: [..."ABCDEF"], sides: ["left"], blocks_other_side: true },
+  { id: "8-circle-gas", name: "8-Circle-Gas", positions: [..."ABCDEFGH"], sides: ["left"], blocks_other_side: true },
 ];
 
 const SAMPLES: Sample[] = [
@@ -207,10 +207,10 @@ describe("FrameConfigPage", () => {
   it("asks before a plate change removes samples", async () => {
     const fetchMock = renderPage(frame(), {
       "PUT /frames/ABCD-EFGH/plates": () =>
-        json(frame({ plates: { left: "6-circle-gas", right: null }, positions: [], version: 5 })),
+        json(frame({ plates: { left: "8-circle-gas", right: null }, positions: [], version: 5 })),
     });
     await userEvent.click(await screen.findByRole("combobox", { name: "Left" }));
-    await userEvent.click(await screen.findByRole("option", { name: "6-Circle-Gas (whole frame)" }));
+    await userEvent.click(await screen.findByRole("option", { name: "8-Circle-Gas (whole frame)" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Change plates" });
     expect(dialog).toHaveTextContent("Left-A, Right-B");
@@ -220,15 +220,15 @@ describe("FrameConfigPage", () => {
     // The gas plate spans the frame, so the right plate is removed too.
     expect(JSON.parse((await lastBody(fetchMock, "PUT")).body)).toEqual({
       version: 4,
-      left: "6-circle-gas",
+      left: "8-circle-gas",
       right: null,
     });
   });
 
-  it("draws a whole-frame gas plate with six positions", async () => {
-    renderPage(frame({ plates: { left: "6-circle-gas", right: null }, positions: [] }));
+  it("draws a whole-frame gas plate with eight positions", async () => {
+    renderPage(frame({ plates: { left: "8-circle-gas", right: null }, positions: [] }));
     await screen.findByRole("button", { name: "Left-A: empty" });
-    expect(screen.getAllByRole("button", { name: /^(Left|Right)-[A-H]:/ })).toHaveLength(6);
+    expect(screen.getAllByRole("button", { name: /^(Left|Right)-[A-H]:/ })).toHaveLength(8);
     expect(screen.getByRole("combobox", { name: "Right" })).toBeDisabled();
   });
 

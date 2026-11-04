@@ -2,7 +2,7 @@
  * Drawing geometry of the frame and plates, in pixels of the v1 images (frame: 455 × 631).
  * Positions are relative to their plate's image.
  */
-import circle6Gas from "../assets/plates/6-circle-gas.png";
+import circle8Gas from "../assets/plates/8-circle-gas.png";
 import circle8 from "../assets/plates/8-circle.png";
 import slot8 from "../assets/plates/8-slot.png";
 import emptyPlate from "../assets/plates/empty.png";
@@ -78,17 +78,19 @@ export const PLATE_DRAWINGS: Record<string, PlateDrawing> = {
       shape: "slot" as const,
     })),
   },
-  "6-circle-gas": {
-    image: circle6Gas,
+  "8-circle-gas": {
+    image: circle8Gas,
     width: 372,
     height: 314,
     spots: [
-      circle("A", 161, 193, 50),
-      circle("B", 217, 153, 50),
-      circle("C", 207, 94, 50),
-      circle("D", 161, 133, 50),
-      circle("E", 115, 94, 50),
-      circle("F", 105, 153, 50),
+      circle("A", 99, 71, 50),
+      circle("B", 161, 71, 50),
+      circle("C", 223, 71, 50),
+      circle("D", 130, 133, 50),
+      circle("E", 192, 133, 50),
+      circle("F", 99, 195, 50),
+      circle("G", 161, 195, 50),
+      circle("H", 223, 195, 50),
     ],
   },
 };

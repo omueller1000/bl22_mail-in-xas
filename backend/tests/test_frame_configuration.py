@@ -73,9 +73,9 @@ async def test_mount_plates(client: AsyncClient) -> None:
 @pytest.mark.parametrize(
     ("left", "right"),
     [
-        (None, "6-circle-gas"),  # gas plate only on the left
-        ("6-circle-gas", "8-circle"),  # gas plate blocks the right side
-        ("8-circle-gas", None),  # obsolete type
+        (None, "8-circle-gas"),  # gas plate only on the left
+        ("8-circle-gas", "8-circle"),  # gas plate blocks the right side
+        ("6-circle-gas", None),  # obsolete type
         ("nonsense", None),
     ],
 )
@@ -88,7 +88,7 @@ async def test_invalid_plate_combinations(
 
 async def test_gas_plate_alone_and_one_sided_frames_are_fine(client: AsyncClient) -> None:
     [code] = await issue_frames(client, orcid(1))
-    assert (await set_plates(client, code, "6-circle-gas", None)).status_code == 200
+    assert (await set_plates(client, code, "8-circle-gas", None)).status_code == 200
     assert (await set_plates(client, code, None, "8-slot")).status_code == 200
 
 
@@ -122,10 +122,10 @@ async def test_assign_replace_and_clear_samples(client: AsyncClient) -> None:
 
 async def test_position_must_exist_on_mounted_plates(client: AsyncClient) -> None:
     [code] = await issue_frames(client, orcid(1))
-    await set_plates(client, code, "6-circle-gas", None)
+    await set_plates(client, code, "8-circle-gas", None)
     sample = await new_sample(client)
-    assert (await assign(client, code, "Left-F", sample)).status_code == 200
-    assert (await assign(client, code, "Left-G", sample)).status_code == 422  # only A-F
+    assert (await assign(client, code, "Left-H", sample)).status_code == 200
+    assert (await assign(client, code, "Left-I", sample)).status_code == 422  # only A-H
     assert (await assign(client, code, "Right-A", sample)).status_code == 422
 
 
@@ -153,7 +153,7 @@ async def test_changing_a_plate_clears_that_side(client: AsyncClient, raw_db: An
     assert [m["position"] for m in remaining] == ["Left-A"]
 
     # A gas plate on the left removes the right plate and clears everything.
-    response = await set_plates(client, code, "6-circle-gas", None)
+    response = await set_plates(client, code, "8-circle-gas", None)
     assert response.json()["positions"] == []
 
 
