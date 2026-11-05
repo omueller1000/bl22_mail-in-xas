@@ -153,6 +153,7 @@ stay). Also check that `nginx.conf` itself has no `server` block with `listen 80
 (`sudo nginx -t` reports the conflict); comment it out if it has.
 
 ```bash
+sudo mkdir -p /etc/nginx/mail-in-xas.d
 sudo cp /SSRL_LOCAL_OM/ht-xas/dev/deploy/nginx/mail-in-xas.conf /etc/nginx/conf.d/
 sudo vi /etc/nginx/conf.d/mail-in-xas.conf     # replace PROXY_IP (see below)
 sudo nginx -t
@@ -173,6 +174,22 @@ Check that the block works (both must print 404 and 403):
 curl -s -o /dev/null -w "%{http_code}\n" -H "X-Forwarded-Host: test" http://localhost/mail-in-xas/dev/
 curl -s -o /dev/null -w "%{http_code}\n" -H "X-Forwarded-Host: test" http://localhost/mail-in-xas/api/instrument/queue
 ```
+
+### Other apps on this VM
+
+Other web apps on the VM (separate projects, e.g. the SSRL Beam Time calendar at
+`/mail-in-xas/xray_schedule/`) add their nginx `location` blocks as `*.conf` files in
+`/etc/nginx/mail-in-xas.d/`, which the portal's server block includes. The portal never edits
+that folder, and it may stay empty. Notes:
+
+- A longer path prefix wins in nginx, so such a location takes precedence over the portal's
+  `/mail-in-xas/` catch-all. The portal must not use those paths for its own pages
+  (currently reserved: `xray_schedule`).
+- All apps share one nginx: a broken snippet makes `nginx -t` fail. A reload is then refused (the
+  running configuration stays), but a restart or reboot would leave nginx, and the portal, down.
+  Always run `sudo nginx -t` before reloading after changing that folder.
+- `deploy.sh` does not update nginx; after changing `deploy/nginx/mail-in-xas.conf`, apply it to
+  `/etc/nginx/conf.d/mail-in-xas.conf` by hand.
 
 ## 10. Deploy
 
